@@ -10,44 +10,58 @@ import {
 } from '../types/monitoring'
 
 export const metricsApi = {
-  // Monitoring Logs
+  // Monitoring Logs - Backend: /api/monitoring/logs
   getLogs: (params?: { 
-    endpoint_id?: number; 
+    api_endpoint_id?: number; 
     page?: number; 
     page_size?: number; 
-    status?: string;
-    start_date?: string;
-    end_date?: string;
+    status_filter?: string;
   }) => axiosClient.get<MonitoringLogListResponse>('/monitoring/logs', { params }),
   
   getLog: (id: number) => axiosClient.get<MonitoringLog>(`/monitoring/logs/${id}`),
   
-  // Metrics
+  // Metrics - Backend: /api/metrics/*
   getMetrics: (endpointId: number, hours?: number) => 
-    axiosClient.get<Metrics>(`/monitoring/metrics/${endpointId}`, { params: { hours } }),
+    axiosClient.get<Metrics>('/metrics/overview', { params: { api_endpoint_id: endpointId, hours } }),
   
   getUptime: (endpointId: number, days?: number) => 
-    axiosClient.get<Uptime>(`/monitoring/uptime/${endpointId}`, { params: { days } }),
+    axiosClient.get<Uptime>('/metrics/uptime', { params: { api_endpoint_id: endpointId, days } }),
   
   getResponseTimeSeries: (endpointId: number, hours?: number) => 
-    axiosClient.get<TimeSeriesPoint[]>(`/monitoring/timeseries/response-time/${endpointId}`, { 
-      params: { hours } 
+    axiosClient.get<TimeSeriesPoint[]>('/metrics/response-time', { 
+      params: { api_endpoint_id: endpointId, hours } 
     }),
   
   getStatusCodeDistribution: (endpointId: number, hours?: number) => 
-    axiosClient.get<Record<string, number>>(`/monitoring/distribution/status-codes/${endpointId}`, { 
-      params: { hours } 
+    axiosClient.get<Record<string, number>>('/metrics/status-codes', { 
+      params: { api_endpoint_id: endpointId, hours } 
+    }),
+  
+  getErrorRate: (endpointId: number, hours?: number) => 
+    axiosClient.get<{error_rate: number}>('/metrics/error-rate', { 
+      params: { api_endpoint_id: endpointId, hours } 
     }),
   
   getAnomalies: (endpointId: number, hours?: number) => 
-    axiosClient.get<MonitoringLog[]>(`/monitoring/anomalies/${endpointId}`, { 
-      params: { hours } 
+    axiosClient.get<MonitoringLog[]>(`/monitoring/endpoints/${endpointId}/anomalies`, { 
+      params: { window_hours: hours } 
     }),
   
-  // AI Insights
-  getInsights: (endpointId: number) => 
-    axiosClient.get<AIInsight[]>(`/monitoring/insights/${endpointId}`),
+  getBaseline: (endpointId: number, hours?: number) => 
+    axiosClient.get<{avg: number, std: number, min: number, max: number, p95: number, p99: number}>(
+      `/monitoring/endpoints/${endpointId}/baseline`, { 
+      params: { window_hours: hours } 
+    }),
   
-  triggerAnalysis: (endpointId: number, hours?: number) => 
-    axiosClient.post<AIAnalysisResponse>(`/monitoring/analyze/${endpointId}`, { hours }),
+  // AI Analysis - Backend: /api/monitoring/analyze
+  triggerAnalysis: (endpointId: number, hours?: number, logIds?: number[]) => 
+    axiosClient.post<AIAnalysisResponse>('/monitoring/analyze', { 
+      api_endpoint_id: endpointId,
+      time_range_hours: hours || 24,
+      log_ids: logIds
+    }),
+  
+  // Health Check Status - Backend: /api/metrics/health-check/status
+  getHealthStatus: () => 
+    axiosClient.get<{is_running: boolean, active_tasks: number, paused_tasks: number}>('/metrics/health-check/status'),
 }

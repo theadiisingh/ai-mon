@@ -75,10 +75,12 @@ export interface AIInsight {
   created_at: string
 }
 
+// Backend expects: api_endpoint_id, time_range_hours, log_ids, analysis_type
 export interface AIAnalysisRequest {
-  endpoint_id: number
+  api_endpoint_id: number
+  time_range_hours?: number
   log_ids?: number[]
-  hours?: number
+  analysis_type?: string
 }
 
 export interface AIAnalysisResponse {

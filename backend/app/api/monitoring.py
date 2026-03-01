@@ -151,7 +151,7 @@ async def analyze_endpoint(
     ai_service = AIService(db)
     api_service = ApiService(db)
     
-    endpoint = await api_service.get_endpoint(analysis_request.endpoint_id, current_user.id)
+    endpoint = await api_service.get_endpoint(analysis_request.api_endpoint_id, current_user.id)
     
     if not endpoint:
         raise HTTPException(
@@ -160,10 +160,10 @@ async def analyze_endpoint(
         )
     
     result = await ai_service.analyze_failures(
-        api_endpoint_id=analysis_request.endpoint_id,
+        api_endpoint_id=analysis_request.api_endpoint_id,
         user_id=current_user.id,
         log_ids=analysis_request.log_ids if analysis_request.log_ids else None,
-        hours=analysis_request.hours
+        hours=analysis_request.time_range_hours
     )
     
     if not result:
