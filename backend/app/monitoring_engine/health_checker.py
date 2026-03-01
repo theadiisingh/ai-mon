@@ -19,30 +19,52 @@ from app.core.config import settings
 from loguru import logger
 
 
+# Global HTTP client for monitoring (singleton)
+_global_http_client: Optional[httpx.AsyncClient] = None
+
+
+async def get_global_http_client() -> httpx.AsyncClient:
+    """Get or create the global HTTP client."""
+    global _global_http_client
+    if _global_http_client is None:
+        _global_http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0),
+            follow_redirects=True,
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100)
+        )
+        logger.info("Global HTTP client created for monitoring")
+    return _global_http_client
+
+
+async def close_global_http_client():
+    """Close the global HTTP client."""
+    global _global_http_client
+    if _global_http_client is not None:
+        await _global_http_client.aclose()
+        _global_http_client = None
+        logger.info("Global HTTP client closed")
+
+
 class HealthChecker:
     """Service for performing health checks on API endpoints."""
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, http_client: Optional[httpx.AsyncClient] = None):
         self.db = db
         self.api_service = ApiService(db)
         self.monitoring_service = MonitoringService(db)
         self.anomaly_service = AnomalyService(db)
         self.ai_service = AIService(db)
-        self.http_client: Optional[httpx.AsyncClient] = None
+        self.http_client = http_client
     
     async def get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
-        if self.http_client is None:
-            self.http_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0),
-                follow_redirects=True,
-                limits=httpx.Limits(max_keepalive_connections=20, max_connections=100)
-            )
-        return self.http_client
+        if self.http_client is not None:
+            return self.http_client
+        return await get_global_http_client()
     
     async def close(self):
-        """Close HTTP client."""
-        if self.http_client:
+        """Close HTTP client (only if not using global)."""
+        if self.http_client is not None:
             await self.http_client.aclose()
             self.http_client = None
     
@@ -299,15 +321,73 @@ class HealthChecker:
         return results
 
 
-async def run_health_check(db_session_factory):
-    """Run health check for all active endpoints."""
+async def run_health_check():
+    """Run health check for all active endpoints (used by scheduler)."""
     from app.core.database import AsyncSessionLocal
     
+    logger.info("Starting health check cycle...")
+    
     async with AsyncSessionLocal() as db:
-        checker = HealthChecker(db)
+        # Use global HTTP client for efficiency
+        http_client = await get_global_http_client()
+        checker = HealthChecker(db, http_client=http_client)
         try:
             results = await checker.check_all_active_endpoints()
-            logger.info(f"Health check completed: {results}")
+            logger.info(
+                f"Health check cycle completed: "
+                f"total={results['total']}, "
+                f"successful={results['successful']}, "
+                f"failed={results['failed']}"
+            )
             return results
+        except Exception as e:
+            logger.error(f"Health check cycle failed: {e}")
+            raise
         finally:
-            await checker.close()
+            # Don't close the global client here
+            pass
+
+
+async def run_health_check_single_endpoint(endpoint_id: int):
+    """Run health check for a single endpoint (for testing)."""
+    from app.core.database import AsyncSessionLocal
+    
+    logger.info(f"Running single health check for endpoint {endpoint_id}...")
+    
+    async with AsyncSessionLocal() as db:
+        from sqlalchemy import select
+        from app.models.api import ApiEndpoint
+        
+        http_client = await get_global_http_client()
+        checker = HealthChecker(db, http_client=http_client)
+        
+        # Get the endpoint
+        result = await db.execute(
+            select(ApiEndpoint).where(ApiEndpoint.id == endpoint_id)
+        )
+        endpoint = result.scalar_one_or_none()
+        
+        if not endpoint:
+            logger.warning(f"Endpoint {endpoint_id} not found")
+            return {"error": "Endpoint not found"}
+        
+        try:
+            log, should_trigger_ai = await checker.check_endpoint(endpoint)
+            await db.commit()
+            logger.info(
+                f"Single health check for {endpoint.name}: "
+                f"status={log.status.value}, status_code={log.status_code}, "
+                f"response_time={log.response_time:.2f}ms"
+            )
+            return {
+                "endpoint_id": endpoint.id,
+                "endpoint_name": endpoint.name,
+                "status": log.status.value,
+                "status_code": log.status_code,
+                "response_time_ms": log.response_time,
+                "error_message": log.error_message
+            }
+        except Exception as e:
+            logger.error(f"Single health check failed: {e}")
+            await db.rollback()
+            return {"error": str(e)}

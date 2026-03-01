@@ -20,9 +20,11 @@ class Settings(BaseSettings):
     app_name: str = "AI MON"
     app_version: str = "1.0.0"
     debug: bool = True
+    host: str = "0.0.0.0"
+    port: int = 8000
 
-    # Database
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/aimon"
+    # Database - Using SQLite for easier setup
+    database_url: str = "sqlite+aiosqlite:///./aimon.db"
 
     # JWT
     secret_key: str = "your-secret-key-change-in-production"

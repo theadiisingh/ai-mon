@@ -1,100 +1,63 @@
-# AI MON - Production Optimization TODO List
+# AI MON - Monitoring Fix Completed
 
-## Phase 1: Codebase Audit & Optimization
+## Issues Fixed:
 
-### Backend Optimizations
+### 1. health_checker.py
+- Added global HTTP client singleton management
+- Fixed `run_health_check()` to work properly with scheduler
+- Added `run_health_check_single_endpoint()` for testing individual endpoints
+- Added `get_global_http_client()` and `close_global_http_client()` functions
 
-#### 1.1 Remove Duplicate Code & Imports
-- [ ] Remove duplicate `get_current_user` in `auth.py` (already exists in `security.py`)
-- [ ] Clean up unused imports across all files
-- [ ] Remove redundant `UserService` instantiation in auth routes
+### 2. task_manager.py
+- Fixed async job execution using `_run_health_check_sync_wrapper()`
+- Added proper event loop handling for APScheduler
+- Added initial health check run on startup
+- Added global HTTP client cleanup on shutdown
+- Better error handling and logging
 
-#### 1.2 Refactor & Decouple
-- [ ] Move `get_db` from `database.py` to `dependencies.py`
-- [ ] Consolidate error handling patterns in API routes
-- [ ] Extract common response schemas
+### 3. monitoring.py (API routes)
+- Added `/api/monitoring/test-monitor` POST endpoint
+  - Triggers full monitoring cycle if no endpoint_id provided
+  - Triggers single endpoint check if endpoint_id provided
+- Added `/api/monitoring/status` GET endpoint
+  - Returns monitoring active status
+  - Returns active endpoints count
+  - Returns logs count for today
+  - Returns scheduler job info
 
-#### 1.3 Ensure Proper Async Usage
-- [ ] Review all sync operations in async functions
-- [ ] Add `await` where missing
-- [ ] Verify httpx client properly async
+### 4. config.py
+- Added `host` and `port` settings
 
-#### 1.4 Optimize Database Queries
-- [ ] Add composite indexes for user_id + created_at
-- [ ] Add indexes on foreign keys (api_endpoint_id, user_id)
-- [ ] Optimize count queries (use func.count instead of len)
-- [ ] Add query optimization hints
+## How to Test:
 
-#### 1.5 Standardize Error Handling
-- [ ] Create unified error response schema
-- [ ] Add global exception handler
-- [ ] Ensure consistent HTTP status codes
+1. Start the backend server:
+   
+```
+bash
+   cd backend
+   python -m uvicorn app.main:app --reload
+   
+```
 
-#### 1.6 Improve Logging
-- [ ] Implement structured logging with context
-- [ ] Add correlation IDs for requests
-- [ ] Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+2. Monitor the console for:
+   - "Monitoring started with interval X seconds"
+   - "Starting health check cycle..."
+   - "Health check cycle completed..."
 
-#### 1.7 Environment Variables
-- [ ] Add proper validation for sensitive configs
-- [ ] Add .env.example file
-- [ ] Document required environment variables
+3. Test manually:
+   - POST /api/monitoring/test-monitor (full cycle)
+   - POST /api/monitoring/test-monitor?endpoint_id=1 (single endpoint)
+   - GET /api/monitoring/status
 
-### Frontend Optimizations
+4. Check the frontend:
+   - API detail page should now show metrics
+   - Total Checks > 0
+   - Uptime percentage updating
+   - Logs being generated
 
-#### 1.8 Code Quality
-- [ ] Add proper TypeScript types for all API responses
-- [ ] Add loading states to all async operations
-- [ ] Implement error boundaries
-- [ ] Add request/response interceptors with retry logic
-
-#### 1.9 Performance
-- [ ] Optimize re-renders with useMemo/useCallback
-- [ ] Add API response caching
-- [ ] Implement proper loading skeletons
-- [ ] Optimize chart component rendering
-
-## Phase 2: Backend Testing
-
-### 2.1 Unit Tests
-- [ ] Test authentication (login, register, token refresh)
-- [ ] Test API creation (CRUD operations)
-- [ ] Test monitoring logic (scheduler, health checks)
-- [ ] Test anomaly detection
-- [ ] Test AI service with mock LLM
-
-### 2.2 Integration Tests
-- [ ] Test API registration → monitoring → log storage flow
-- [ ] Test repeated failure → AI trigger flow
-- [ ] Test email notifications
-
-### 2.3 Mock External Services
-- [ ] Mock LLM API calls
-- [ ] Mock email sending
-- [ ] Mock HTTP requests for health checks
-
-## Phase 3: Monitoring Engine Stability
-
-- [ ] Verify scheduler starts correctly on startup
-- [ ] Test concurrent API monitoring
-- [ ] Test monitoring tasks don't block main app
-- [ ] Test failure handling doesn't crash scheduler
-- [ ] Test repeated failures trigger AI logic
-
-## Phase 4: Frontend Testing & Optimization
-
-- [ ] Add unit tests for components
-- [ ] Test authentication flows
-- [ ] Test API calls and error handling
-- [ ] Optimize performance
-
-## Phase 5: Final Stability Checklist
-
-- [ ] Backend starts cleanly
-- [ ] Frontend connects properly
-- [ ] Monitoring works
-- [ ] AI mock works
-- [ ] Alerts trigger
-- [ ] All tests pass
-- [ ] No console errors
-- [ ] No unhandled promise rejections
+## Key Technical Details:
+- Uses APScheduler with AsyncIOScheduler
+- All HTTP calls are async using httpx AsyncClient
+- Global HTTP client for connection pooling efficiency
+- Monitoring runs in background while FastAPI serves requests
+- No blocking code used

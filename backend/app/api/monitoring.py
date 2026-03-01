@@ -3,7 +3,7 @@ Monitoring API routes.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from app.core.dependencies import get_db, get_current_active_user
 from app.schemas.monitoring_schema import (
@@ -17,8 +17,50 @@ from app.services.anomaly_service import AnomalyService
 from app.services.ai_service import AIService
 from app.services.api_service import ApiService
 from app.schemas.user_schema import UserResponse
+from app.monitoring_engine.task_manager import get_task_manager
+from app.monitoring_engine.health_checker import run_health_check, run_health_check_single_endpoint
 
 router = APIRouter()
+
+
+@router.post("/test-monitor")
+async def test_monitor_endpoint(
+    endpoint_id: Optional[int] = None,
+    current_user: UserResponse = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """Test endpoint to manually trigger a monitoring cycle."""
+    try:
+        if endpoint_id:
+            result = await run_health_check_single_endpoint(endpoint_id)
+            if "error" in result:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+            return {"message": "Single endpoint check completed", "result": result}
+        else:
+            result = await run_health_check()
+            return {"message": "Full monitoring cycle completed", "result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Monitoring check failed: {str(e)}")
+
+
+@router.get("/status")
+async def get_monitoring_status(current_user: UserResponse = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Get the current monitoring status."""
+    task_manager = get_task_manager()
+    status_info = task_manager.get_status()
+    from app.core.database import AsyncSessionLocal
+    from sqlalchemy import select, func
+    from app.models.api import ApiEndpoint
+    from app.models.monitoring_log import MonitoringLog
+    async with AsyncSessionLocal() as db:
+        active_result = await db.execute(select(func.count(ApiEndpoint.id)).where(ApiEndpoint.is_active == True, ApiEndpoint.is_paused == False))
+        active_count = active_result.scalar() or 0
+        from datetime import datetime
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        logs_result = await db.execute(select(func.count(MonitoringLog.id)).where(MonitoringLog.checked_at >= today_start))
+        logs_count = logs_result.scalar() or 0
+    return {"monitoring_active": status_info["is_running"], "active_endpoints": active_count, "logs_today": logs_count, "jobs": status_info["jobs"]}
 
 
 @router.get("/logs", response_model=MonitoringLogListResponse)
