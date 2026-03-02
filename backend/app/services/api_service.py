@@ -29,7 +29,13 @@ class ApiService:
                 ApiEndpoint.user_id == user_id
             )
         )
-        return result.scalar_one_or_none()
+        endpoint = result.scalar_one_or_none()
+        
+        # Calculate avg_response_time if endpoint exists
+        if endpoint:
+            endpoint.avg_response_time = await self._calculate_avg_response_time(endpoint.id)
+        
+        return endpoint
     
     async def create_endpoint(
         self, 
@@ -134,7 +140,7 @@ class ApiService:
         result = await self.db.execute(query)
         endpoints = list(result.scalars().all())
         
-        # Calculate avg_response_time for each endpoint
+        # Calculate avg_response_time for each endpoint (set as attribute for response)
         for endpoint in endpoints:
             endpoint.avg_response_time = await self._calculate_avg_response_time(endpoint.id)
         

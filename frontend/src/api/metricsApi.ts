@@ -64,4 +64,8 @@ export const metricsApi = {
   // Health Check Status - Backend: /api/metrics/health-check/status
   getHealthStatus: () => 
     axiosClient.get<{is_running: boolean, active_tasks: number, paused_tasks: number}>('/metrics/health-check/status'),
+  
+  // AI Insights - Backend: /api/monitoring/endpoints/{id}/insights
+  getInsights: (endpointId: number) => 
+    axiosClient.get<AIInsight[]>(`/monitoring/endpoints/${endpointId}/insights`),
 }

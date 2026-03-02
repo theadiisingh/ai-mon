@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiApi } from '../api/apiApi'
 import { metricsApi } from '../api/metricsApi'
+import { ApiEndpoint } from '../types/api'
+import { Metrics, Uptime } from '../types/monitoring'
 import ResponseTimeChart from '../components/charts/ResponseTimeChart'
 import UptimeChart from '../components/charts/UptimeChart'
 import LogsTable from '../components/logs/LogsTable'
 import AiInsightPanel from '../components/logs/AiInsightPanel'
 import StatCard from '../components/dashboard/StatCard'
 import StatusBadge from '../components/dashboard/StatusBadge'
-import { formatPercentage, formatDuration, formatDateTime } from '../utils/formatters'
+import { formatPercentage, formatDuration } from '../utils/formatters'
 
 export default function ApiDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -17,20 +19,20 @@ export default function ApiDetailPage() {
   const queryClient = useQueryClient()
   const [analyzing, setAnalyzing] = useState(false)
 
-  const { data: apiData, isLoading: apiLoading } = useQuery({
+  const { data: apiData, isLoading: apiLoading } = useQuery<{ data: ApiEndpoint }>({
     queryKey: ['api', id],
     queryFn: async () => {
-      const response = await apiApi.get(id!)
-      return response.data
+      const response = await apiApi.get(Number(id!))
+      return response
     },
     enabled: !!id,
   })
 
-  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+  const { data: metricsData, isLoading: metricsLoading } = useQuery<{ data: Metrics }>({
     queryKey: ['metrics', id],
     queryFn: async () => {
-      const response = await metricsApi.getMetrics(id!)
-      return response.data
+      const response = await metricsApi.getMetrics(Number(id!))
+      return response
     },
     enabled: !!id,
   })
@@ -38,7 +40,7 @@ export default function ApiDetailPage() {
   const { data: logsData } = useQuery({
     queryKey: ['logs', id],
     queryFn: async () => {
-      const response = await metricsApi.getLogs({ endpoint_id: Number(id), page_size: 50 })
+      const response = await metricsApi.getLogs({ api_endpoint_id: Number(id), page_size: 50 })
       return response.data.items
     },
     enabled: !!id,
@@ -97,8 +99,23 @@ export default function ApiDetailPage() {
     )
   }
 
-  const api = apiData
-  const metrics = metricsData || {}
+  const api: ApiEndpoint = apiData.data
+  const metrics: Metrics = metricsData?.data || {
+    total_checks: api.total_checks || 0,
+    successful_checks: api.successful_checks || 0,
+    failed_checks: api.failed_checks || 0,
+    error_rate: 0,
+    uptime_percentage: api.uptime_percentage || 0,
+    avg_response_time: api.avg_response_time || 0,
+    min_response_time: 0,
+    max_response_time: 0,
+  }
+
+  const uptimeData: Uptime | null = metrics ? {
+    total_checks: metrics.total_checks,
+    successful_checks: metrics.successful_checks,
+    uptime_percentage: metrics.uptime_percentage
+  } : null
 
   return (
     <div className="space-y-6">
@@ -147,28 +164,28 @@ export default function ApiDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
           title="Status"
-          value={<StatusBadge status={api.is_active ? 'active' : 'inactive'} />}
+          value={api.is_active ? 'Active' : 'Inactive'}
           color={api.is_active ? 'success' : 'warning'}
         />
         <StatCard
           title="Uptime (24h)"
-          value={formatPercentage(metrics.uptime?.uptime_percentage || 0)}
-          color={(metrics.uptime?.uptime_percentage || 0) >= 99 ? 'success' : 'danger'}
+          value={formatPercentage(metrics.uptime_percentage)}
+          color={metrics.uptime_percentage >= 99 ? 'success' : 'danger'}
         />
         <StatCard
           title="Avg Response"
-          value={formatDuration(metrics.avg_response_time || 0)}
+          value={formatDuration(metrics.avg_response_time)}
         />
         <StatCard
           title="Total Checks"
-          value={metrics.uptime?.total_checks || 0}
+          value={metrics.total_checks}
         />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ResponseTimeChart data={metrics.response_times || []} loading={metricsLoading} />
-        <UptimeChart uptime={metrics.uptime} loading={metricsLoading} />
+        <ResponseTimeChart data={[]} loading={metricsLoading} />
+        <UptimeChart uptime={uptimeData} loading={metricsLoading} />
       </div>
 
       {/* AI Insights */}

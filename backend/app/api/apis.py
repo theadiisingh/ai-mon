@@ -227,6 +227,10 @@ async def trigger_manual_check(
     checker = HealthChecker(db)
     try:
         log, _ = await checker.check_endpoint(endpoint)
+        await db.commit()
         return {"message": "Health check completed", "log_id": log.id}
+    except Exception as e:
+        await db.rollback()
+        raise
     finally:
         await checker.close()

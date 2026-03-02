@@ -215,3 +215,38 @@ async def analyze_endpoint(
         )
     
     return result
+
+
+@router.get("/endpoints/{endpoint_id}/insights")
+async def get_endpoint_insights(
+    endpoint_id: int,
+    current_user: UserResponse = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get AI insights for a specific endpoint."""
+    from sqlalchemy import select
+    from app.models.ai_insight import AIInsight
+    
+    # Verify endpoint exists and belongs to user
+    api_service = ApiService(db)
+    endpoint = await api_service.get_endpoint(endpoint_id, current_user.id)
+    
+    if not endpoint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found"
+        )
+    
+    # Get insights for this endpoint
+    result = await db.execute(
+        select(AIInsight)
+        .where(
+            AIInsight.api_endpoint_id == endpoint_id,
+            AIInsight.user_id == current_user.id
+        )
+        .order_by(AIInsight.created_at.desc())
+        .limit(20)
+    )
+    insights = list(result.scalars().all())
+    
+    return insights
