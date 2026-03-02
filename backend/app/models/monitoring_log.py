@@ -26,6 +26,7 @@ class MonitoringLog(Base):
         Index('ix_monitoring_logs_endpoint_checked', 'api_endpoint_id', 'checked_at'),
         Index('ix_monitoring_logs_user_endpoint', 'user_id', 'api_endpoint_id'),
         Index('ix_monitoring_logs_status_checked', 'status', 'checked_at'),
+        Index('ix_monitoring_logs_is_anomaly', 'is_anomaly', 'checked_at'),
     )
     
     id = Column(Integer, primary_key=True, index=True)

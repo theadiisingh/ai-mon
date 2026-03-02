@@ -192,12 +192,8 @@ class HealthChecker:
             
             log = await self.monitoring_service.create_log(log_data)
             
-            await self.api_service.update_endpoint_stats(
-                endpoint_id=endpoint.id,
-                status_code=status_code,
-                response_time=response_time,
-                is_success=is_success
-            )
+            # Note: update_endpoint_stats is already called in monitoring_service.create_log()
+            # No need to call it again here
             
             should_trigger_ai = False
             if not is_success:

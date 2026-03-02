@@ -10,25 +10,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
-import sys
 
 from app.core.config import settings
 from app.core.database import init_db, close_db, check_db_health
 from app.api.router import api_router
 from app.monitoring_engine.task_manager import get_task_manager
 from app.utils.logger import log
-
-
-# Configure loguru to use our logger
-logger.configure(**{
-    "handlers": [
-        {
-            "sink": sys.stdout,
-            "format": "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>",
-            "level": "DEBUG" if settings.debug else "INFO",
-        }
-    ]
-})
 
 
 @asynccontextmanager

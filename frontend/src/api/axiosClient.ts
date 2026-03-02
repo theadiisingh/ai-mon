@@ -1,5 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
+const MAX_RETRY_COUNT = 1
+
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
@@ -22,6 +24,10 @@ axiosClient.interceptors.request.use(
   }
 )
 
+// Track refresh token attempts to prevent infinite loops
+let isRefreshing = false
+let refreshTokenAttempts = 0
+
 // Response interceptor to handle errors and token refresh
 axiosClient.interceptors.response.use(
   (response) => response,
@@ -29,8 +35,21 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
     
     // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Prevent infinite refresh loops
+      if (isRefreshing || refreshTokenAttempts >= MAX_RETRY_COUNT) {
+        // Clear tokens and redirect to login
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+        return Promise.reject(error)
+      }
+      
       originalRequest._retry = true
+      isRefreshing = true
+      refreshTokenAttempts++
       
       try {
         const refreshToken = localStorage.getItem('refresh_token')
@@ -55,21 +74,28 @@ axiosClient.interceptors.response.use(
             localStorage.setItem('refresh_token', newRefreshToken)
           }
           
+          // Reset refresh counter on success
+          refreshTokenAttempts = 0
+          
           // Retry the original request
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${access_token}`
           }
+          isRefreshing = false
           return axiosClient(originalRequest)
         }
       } catch (refreshError) {
         // Refresh failed - clear tokens and redirect to login
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        refreshTokenAttempts = 0
         
         // Redirect to login if in browser context
         if (typeof window !== 'undefined') {
           window.location.href = '/login'
         }
+      } finally {
+        isRefreshing = false
       }
     }
     

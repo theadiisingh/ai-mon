@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { AxiosResponse } from 'axios'
 import { User } from '../types/user'
 import { authApi } from '../api/authApi'
 
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       // Validate token and get user
       authApi.me()
-        .then((response) => {
+        .then((response: AxiosResponse<User>) => {
           setUser(response.data)
         })
         .catch(() => {
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (refreshToken) {
         // Try to get new access token
         authApi.refreshToken()
-          .then((response) => {
+          .then((response: AxiosResponse<{ access_token: string; refresh_token?: string }>) => {
             const { access_token, refresh_token } = response.data
             localStorage.setItem('access_token', access_token)
             if (refresh_token) {
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             return authApi.me()
           })
-          .then((response) => {
+          .then((response: AxiosResponse<User>) => {
             setUser(response.data)
           })
           .catch(() => {
@@ -72,20 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const response = await authApi.me()
+      const response: AxiosResponse<User> = await authApi.me()
       setUser(response.data)
     } catch (error) {
       console.error('Failed to refresh user:', error)
       // Try to refresh the token
       try {
-        const response = await authApi.refreshToken()
+        const response: AxiosResponse<{ access_token: string; refresh_token?: string }> = await authApi.refreshToken()
         const { access_token, refresh_token } = response.data
         localStorage.setItem('access_token', access_token)
         if (refresh_token) {
           localStorage.setItem('refresh_token', refresh_token)
         }
         // Retry getting user
-        const userResponse = await authApi.me()
+        const userResponse: AxiosResponse<User> = await authApi.me()
         setUser(userResponse.data)
       } catch (refreshError) {
         // Refresh failed, logout
@@ -95,13 +96,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    const response = await authApi.login(email, password)
+    const response: AxiosResponse<{ access_token: string; refresh_token?: string }> = await authApi.login(email, password)
     const { access_token, refresh_token } = response.data
     localStorage.setItem('access_token', access_token)
     if (refresh_token) {
       localStorage.setItem('refresh_token', refresh_token)
     }
-    const userResponse = await authApi.me()
+    const userResponse: AxiosResponse<User> = await authApi.me()
     setUser(userResponse.data)
   }
 

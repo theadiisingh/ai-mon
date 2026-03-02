@@ -4,6 +4,7 @@ import { apiApi } from '../api/apiApi'
 import ApiTable from '../components/dashboard/ApiTable'
 import StatCard from '../components/dashboard/StatCard'
 import { formatPercentage } from '../utils/formatters'
+import { ApiEndpoint } from '../types/api'
 
 export default function DashboardPage() {
   const queryClient = useQueryClient()
@@ -24,16 +25,16 @@ export default function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['apis'] })
   }
 
-  const apis = apisData?.items || []
+  const apis: ApiEndpoint[] = apisData?.items || []
   
   // Calculate aggregate stats
   const totalApis = apis.length
-  const activeApis = apis.filter(api => api.is_active).length
+  const activeApis = apis.filter((api: ApiEndpoint) => api.is_active).length
   const avgUptime = totalApis > 0 
-    ? apis.reduce((sum, api) => sum + api.uptime_percentage, 0) / totalApis 
+    ? apis.reduce((sum: number, api: ApiEndpoint) => sum + api.uptime_percentage, 0) / totalApis 
     : 0
   const avgResponseTime = totalApis > 0
-    ? apis.reduce((sum, api) => sum + (api.avg_response_time || 0), 0) / totalApis
+    ? apis.reduce((sum: number, api: ApiEndpoint) => sum + (api.avg_response_time || 0), 0) / totalApis
     : 0
 
   // Show loading skeleton

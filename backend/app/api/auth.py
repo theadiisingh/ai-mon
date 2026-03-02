@@ -131,14 +131,55 @@ async def login(
 
 @router.post("/refresh")
 async def refresh_token(
-    current_user: UserResponse = Depends(get_current_active_user),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    """Refresh access token."""
-    auth_service = AuthService(db)
+    """Refresh access token using refresh token."""
+    from app.core.security import decode_token
+    from app.services.user_service import UserService
     
-    # Generate new tokens using the current user
-    token = await auth_service._generate_tokens(current_user)
+    # Decode the refresh token
+    payload = decode_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Validate token type is refresh
+    token_type = payload.get("type")
+    if token_type != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type. Expected refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Get user ID from payload
+    user_id = payload.get("sub")
+    
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Get user from database
+    user_service = UserService(db)
+    user = await user_service.get_user_by_id(int(user_id))
+    
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive"
+        )
+    
+    # Generate new tokens
+    auth_service = AuthService(db)
+    token = await auth_service._generate_tokens(user)
     
     return {
         "access_token": token.access_token,

@@ -5,6 +5,7 @@ Loads settings from environment variables using pydantic-settings.
 import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
 
 
 class Settings(BaseSettings):
@@ -57,6 +58,19 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @model_validator(mode='after')
+    def validate_production_settings(self):
+        """Validate production settings."""
+        if not self.debug:
+            # In production, warn about default secret key
+            if self.secret_key == "your-secret-key-change-in-production":
+                import warnings
+                warnings.warn(
+                    "WARNING: Using default secret_key in production! "
+                    "Set SECRET_KEY environment variable for security."
+                )
+        return self
 
 
 # Simple approach - just use defaults for testing
