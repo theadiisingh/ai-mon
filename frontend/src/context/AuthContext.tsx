@@ -28,14 +28,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(response.data)
         })
         .catch(() => {
-          // Token invalid, clear it but don't redirect immediately
-          localStorage.removeItem('access_token')
+          // Token invalid, try refresh token
+          const refreshToken = localStorage.getItem('refresh_token')
+          if (refreshToken) {
+            // The axios interceptor will handle refresh
+            // Just clear the invalid access token for now
+            localStorage.removeItem('access_token')
+          }
         })
         .finally(() => {
           setLoading(false)
         })
     } else {
-      setLoading(false)
+      // Check for refresh token
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (refreshToken) {
+        // Try to get new access token
+        authApi.refreshToken()
+          .then((response) => {
+            const { access_token, refresh_token } = response.data
+            localStorage.setItem('access_token', access_token)
+            if (refresh_token) {
+              localStorage.setItem('refresh_token', refresh_token)
+            }
+            return authApi.me()
+          })
+          .then((response) => {
+            setUser(response.data)
+          })
+          .catch(() => {
+            // Both tokens invalid
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+          })
+          .finally(() => {
+            setLoading(false)
+          })
+      } else {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -45,13 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.data)
     } catch (error) {
       console.error('Failed to refresh user:', error)
+      // Try to refresh the token
+      try {
+        const response = await authApi.refreshToken()
+        const { access_token, refresh_token } = response.data
+        localStorage.setItem('access_token', access_token)
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token)
+        }
+        // Retry getting user
+        const userResponse = await authApi.me()
+        setUser(userResponse.data)
+      } catch (refreshError) {
+        // Refresh failed, logout
+        logout()
+      }
     }
   }
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login(email, password)
-    const { access_token } = response.data
+    const { access_token, refresh_token } = response.data
     localStorage.setItem('access_token', access_token)
+    if (refresh_token) {
+      localStorage.setItem('refresh_token', refresh_token)
+    }
     const userResponse = await authApi.me()
     setUser(userResponse.data)
   }
@@ -63,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
     setUser(null)
   }
 

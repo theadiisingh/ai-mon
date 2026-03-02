@@ -1,10 +1,11 @@
 """
-API Endpoint service for managing monitored APIs.
+API Endpoint service for managing monitored APIs with optimized queries.
 """
 from typing import Optional, List
 import json
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.api import ApiEndpoint, HttpMethod
 from app.models.monitoring_log import MonitoringLog, CheckStatus
@@ -12,7 +13,7 @@ from app.schemas.api_schema import ApiEndpointCreate, ApiEndpointUpdate, ApiEndp
 
 
 class ApiService:
-    """Service for API endpoint operations."""
+    """Service for API endpoint operations with optimized database queries."""
     
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -22,7 +23,7 @@ class ApiService:
         endpoint_id: int, 
         user_id: int
     ) -> Optional[ApiEndpoint]:
-        """Get an API endpoint by ID for a specific user."""
+        """Get an API endpoint by ID for a specific user with optimized query."""
         result = await self.db.execute(
             select(ApiEndpoint).where(
                 ApiEndpoint.id == endpoint_id,
@@ -31,7 +32,6 @@ class ApiService:
         )
         endpoint = result.scalar_one_or_none()
         
-        # Calculate avg_response_time if endpoint exists
         if endpoint:
             endpoint.avg_response_time = await self._calculate_avg_response_time(endpoint.id)
         
@@ -43,7 +43,6 @@ class ApiService:
         user_id: int
     ) -> ApiEndpoint:
         """Create a new API endpoint."""
-        # Convert headers and body to JSON strings
         headers_json = json.dumps(endpoint_data.headers) if endpoint_data.headers else None
         body_json = json.dumps(endpoint_data.body) if endpoint_data.body else None
         
@@ -77,7 +76,6 @@ class ApiService:
         if not endpoint:
             return None
         
-        # Update fields if provided
         update_data = endpoint_data.model_dump(exclude_unset=True)
         
         if "headers" in update_data:
@@ -117,13 +115,14 @@ class ApiService:
         page_size: int = 20,
         is_active: Optional[bool] = None
     ) -> tuple[List[ApiEndpoint], int]:
-        """List endpoints with pagination."""
+        """List endpoints with pagination and optimized query."""
+        # Build base query
         query = select(ApiEndpoint).where(ApiEndpoint.user_id == user_id)
         
         if is_active is not None:
             query = query.where(ApiEndpoint.is_active == is_active)
         
-        # Get total count
+        # Get total count with optimized query
         count_query = select(func.count(ApiEndpoint.id)).where(
             ApiEndpoint.user_id == user_id
         )
@@ -133,16 +132,24 @@ class ApiService:
         total_result = await self.db.execute(count_query)
         total = total_result.scalar() or 0
         
-        # Get paginated results
+        # Get paginated results with ordering
         skip = (page - 1) * page_size
-        query = query.offset(skip).limit(page_size).order_by(ApiEndpoint.created_at.desc())
+        query = (
+            query
+            .order_by(ApiEndpoint.created_at.desc())
+            .offset(skip)
+            .limit(page_size)
+        )
         
         result = await self.db.execute(query)
         endpoints = list(result.scalars().all())
         
-        # Calculate avg_response_time for each endpoint (set as attribute for response)
-        for endpoint in endpoints:
-            endpoint.avg_response_time = await self._calculate_avg_response_time(endpoint.id)
+        # Batch calculate avg_response_time for all endpoints (avoid N+1)
+        if endpoints:
+            endpoint_ids = [e.id for e in endpoints]
+            avg_times = await self._batch_calculate_avg_response_time(endpoint_ids)
+            for endpoint in endpoints:
+                endpoint.avg_response_time = avg_times.get(endpoint.id)
         
         return endpoints, total
     
@@ -159,6 +166,29 @@ class ApiService:
         avg = result.scalar()
         return float(avg) if avg else None
     
+    async def _batch_calculate_avg_response_time(self, endpoint_ids: List[int]) -> dict:
+        """Batch calculate average response times for multiple endpoints."""
+        if not endpoint_ids:
+            return {}
+        
+        result = await self.db.execute(
+            select(
+                MonitoringLog.api_endpoint_id,
+                func.avg(MonitoringLog.response_time)
+            )
+            .where(
+                MonitoringLog.api_endpoint_id.in_(endpoint_ids),
+                MonitoringLog.status == CheckStatus.SUCCESS,
+                MonitoringLog.response_time.isnot(None)
+            )
+            .group_by(MonitoringLog.api_endpoint_id)
+        )
+        
+        return {
+            row[0]: float(row[1]) if row[1] else None
+            for row in result.all()
+        }
+    
     async def count_endpoints(
         self, 
         user_id: int,
@@ -174,7 +204,7 @@ class ApiService:
         return result.scalar() or 0
     
     async def get_active_endpoints(self) -> List[ApiEndpoint]:
-        """Get all active API endpoints for monitoring."""
+        """Get all active API endpoints for monitoring with optimized query."""
         result = await self.db.execute(
             select(ApiEndpoint).where(
                 ApiEndpoint.is_active == True,

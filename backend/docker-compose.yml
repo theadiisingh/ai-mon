@@ -1,39 +1,77 @@
-# AI MON Backend Docker Compose
-
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: aimon-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: aimon
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+  # Backend API service
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     container_name: aimon-backend
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/aimon
-      - DEBUG=True
-      - SECRET_KEY=your-secret-key-change-in-production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://aimon:aimon123@db:5432/aimon}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DEBUG=false
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aimon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     volumes:
-      - ./logs:/app/logs
+      - aimon-data:/app/data
+
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    container_name: aimon-db
+    environment:
+      - POSTGRES_USER=aimon
+      - POSTGRES_PASSWORD=aimon123
+      - POSTGRES_DB=aimon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - aimon-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aimon -d aimon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching (optional, for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: aimon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - aimon-network
+
+networks:
+  aimon-network:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  postgres-data:
+  redis-data:
+  aimon-data:

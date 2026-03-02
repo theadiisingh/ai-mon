@@ -1,5 +1,5 @@
 """
-Health checker for monitoring API endpoints.
+Health checker for monitoring API endpoints with retry and error isolation.
 """
 import json
 import asyncio
@@ -7,6 +7,7 @@ import httpx
 from typing import Optional, Dict, Any, Tuple
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from app.models.api import ApiEndpoint, HttpMethod
 from app.models.monitoring_log import MonitoringLog, CheckStatus
@@ -16,7 +17,6 @@ from app.services.monitoring_service import MonitoringService
 from app.services.anomaly_service import AnomalyService
 from app.services.ai_service import AIService
 from app.core.config import settings
-from loguru import logger
 
 
 # Global HTTP client for monitoring (singleton)
@@ -24,13 +24,16 @@ _global_http_client: Optional[httpx.AsyncClient] = None
 
 
 async def get_global_http_client() -> httpx.AsyncClient:
-    """Get or create the global HTTP client."""
+    """Get or create the global HTTP client with connection pooling."""
     global _global_http_client
     if _global_http_client is None:
         _global_http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0),
             follow_redirects=True,
-            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100)
+            limits=httpx.Limits(
+                max_keepalive_connections=20,
+                max_connections=100
+            )
         )
         logger.info("Global HTTP client created for monitoring")
     return _global_http_client
@@ -46,7 +49,10 @@ async def close_global_http_client():
 
 
 class HealthChecker:
-    """Service for performing health checks on API endpoints."""
+    """
+    Service for performing health checks on API endpoints.
+    Includes retry logic with exponential backoff and error isolation.
+    """
     
     def __init__(self, db: AsyncSession, http_client: Optional[httpx.AsyncClient] = None):
         self.db = db
@@ -68,50 +74,100 @@ class HealthChecker:
             await self.http_client.aclose()
             self.http_client = None
     
-    async def check_endpoint(self, endpoint: ApiEndpoint) -> Tuple[MonitoringLog, bool]:
-        """
-        Perform a health check on an API endpoint.
+    async def _retry_request(
+        self,
+        client: httpx.AsyncClient,
+        method: str,
+        url: str,
+        headers: dict,
+        json_body: Optional[dict],
+        timeout: int,
+        endpoint_name: str
+    ) -> Tuple[Optional[httpx.Response], Optional[str]]:
+        """Execute HTTP request with retry logic and exponential backoff."""
+        max_retries = settings.max_retries
+        base_delay = 1.0
+        last_error = None
         
-        Returns:
-            Tuple of (MonitoringLog, should_trigger_ai_analysis)
-        """
+        for attempt in range(max_retries):
+            try:
+                response = await client.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    json=json_body,
+                    timeout=timeout
+                )
+                return response, None
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                last_error = f"Attempt {attempt + 1}/{max_retries}: {str(e)}"
+                logger.warning(f"Retry for {endpoint_name}: {last_error}")
+            
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                await asyncio.sleep(delay)
+        
+        return None, last_error
+    
+    async def check_endpoint(self, endpoint: ApiEndpoint) -> Tuple[MonitoringLog, bool]:
+        """Perform a health check on an API endpoint with retry and error isolation."""
         start_time = datetime.utcnow()
         
         try:
-            # Prepare request
             headers = json.loads(endpoint.headers) if endpoint.headers else {}
             body = json.loads(endpoint.body) if endpoint.body else None
+            json_body = body if endpoint.method in [HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH] else None
             
-            # Make HTTP request
             client = await self.get_client()
-            
-            response = await client.request(
+            response, error_msg = await self._retry_request(
+                client=client,
                 method=endpoint.method.value,
                 url=endpoint.url,
                 headers=headers,
-                json=body if endpoint.method in [HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH] else None,
-                timeout=endpoint.timeout_seconds
+                json_body=json_body,
+                timeout=endpoint.timeout_seconds,
+                endpoint_name=endpoint.name
             )
             
-            # Calculate response time
-            end_time = datetime.utcnow()
-            response_time = (end_time - start_time).total_seconds() * 1000  # Convert to ms
+            if response is None:
+                end_time = datetime.utcnow()
+                response_time = (end_time - start_time).total_seconds() * 1000
+                
+                log_data = MonitoringLogCreate(
+                    api_endpoint_id=endpoint.id,
+                    user_id=endpoint.user_id,
+                    status=CheckStatus.TIMEOUT,
+                    status_code=None,
+                    response_time=response_time,
+                    error_message=error_msg or "Max retries exceeded",
+                    is_anomaly=False,
+                    request_method=endpoint.method.value,
+                    request_url=endpoint.url
+                )
+                
+                log = await self.monitoring_service.create_log(log_data)
+                
+                await self.api_service.update_endpoint_stats(
+                    endpoint_id=endpoint.id,
+                    status_code=None,
+                    response_time=response_time,
+                    is_success=False
+                )
+                
+                failed_count = await self.monitoring_service.get_failed_checks_count(
+                    api_endpoint_id=endpoint.id,
+                    minutes=5
+                )
+                
+                return log, failed_count >= 3
             
-            # Determine status
+            end_time = datetime.utcnow()
+            response_time = (end_time - start_time).total_seconds() * 1000
+            
             status_code = response.status_code
             is_success = status_code == endpoint.expected_status_code
-            
             status = CheckStatus.SUCCESS if is_success else CheckStatus.FAILURE
             
-            # Truncate response body for storage
-            response_body = None
-            if not is_success:
-                try:
-                    response_body = response.text[:5000]  # Store first 5000 chars
-                except Exception:
-                    pass
-            
-            # Check for anomaly
             is_anomaly = False
             anomaly_score = None
             
@@ -121,7 +177,6 @@ class HealthChecker:
                     current_response_time=response_time
                 )
             
-            # Create monitoring log
             log_data = MonitoringLogCreate(
                 api_endpoint_id=endpoint.id,
                 user_id=endpoint.user_id,
@@ -137,7 +192,6 @@ class HealthChecker:
             
             log = await self.monitoring_service.create_log(log_data)
             
-            # Update endpoint stats
             await self.api_service.update_endpoint_stats(
                 endpoint_id=endpoint.id,
                 status_code=status_code,
@@ -145,7 +199,6 @@ class HealthChecker:
                 is_success=is_success
             )
             
-            # Check if we should trigger AI analysis
             should_trigger_ai = False
             if not is_success:
                 failed_count = await self.monitoring_service.get_failed_checks_count(
@@ -155,56 +208,15 @@ class HealthChecker:
                 if failed_count >= 3:
                     should_trigger_ai = True
             
-            logger.info(
-                f"Health check completed for {endpoint.name}: "
-                f"status={status.value}, status_code={status_code}, "
-                f"response_time={response_time:.2f}ms"
-            )
+            logger.info(f"Health check: {endpoint.name} - {status.value} - {response_time:.2f}ms")
             
             return log, should_trigger_ai
         
-        except httpx.TimeoutException as e:
-            # Handle timeout
+        except Exception as e:
             end_time = datetime.utcnow()
             response_time = (end_time - start_time).total_seconds() * 1000
             
-            log_data = MonitoringLogCreate(
-                api_endpoint_id=endpoint.id,
-                user_id=endpoint.user_id,
-                status=CheckStatus.TIMEOUT,
-                status_code=None,
-                response_time=response_time,
-                error_message=f"Request timeout after {endpoint.timeout_seconds}s",
-                is_anomaly=False,
-                request_method=endpoint.method.value,
-                request_url=endpoint.url
-            )
-            
-            log = await self.monitoring_service.create_log(log_data)
-            
-            # Update endpoint stats
-            await self.api_service.update_endpoint_stats(
-                endpoint_id=endpoint.id,
-                status_code=None,
-                response_time=response_time,
-                is_success=False
-            )
-            
-            logger.warning(f"Timeout for endpoint {endpoint.name}: {e}")
-            
-            # Check if we should trigger AI analysis
-            failed_count = await self.monitoring_service.get_failed_checks_count(
-                api_endpoint_id=endpoint.id,
-                minutes=5
-            )
-            should_trigger_ai = failed_count >= 3
-            
-            return log, should_trigger_ai
-        
-        except httpx.RequestError as e:
-            # Handle other request errors
-            end_time = datetime.utcnow()
-            response_time = (end_time - start_time).total_seconds() * 1000
+            logger.error(f"Error checking {endpoint.name}: {e}")
             
             log_data = MonitoringLogCreate(
                 api_endpoint_id=endpoint.id,
@@ -212,7 +224,7 @@ class HealthChecker:
                 status=CheckStatus.ERROR,
                 status_code=None,
                 response_time=response_time,
-                error_message=str(e),
+                error_message=str(e)[:500],
                 is_anomaly=False,
                 request_method=endpoint.method.value,
                 request_url=endpoint.url
@@ -220,7 +232,6 @@ class HealthChecker:
             
             log = await self.monitoring_service.create_log(log_data)
             
-            # Update endpoint stats
             await self.api_service.update_endpoint_stats(
                 endpoint_id=endpoint.id,
                 status_code=None,
@@ -228,19 +239,10 @@ class HealthChecker:
                 is_success=False
             )
             
-            logger.error(f"Error checking endpoint {endpoint.name}: {e}")
-            
-            # Check if we should trigger AI analysis
-            failed_count = await self.monitoring_service.get_failed_checks_count(
-                api_endpoint_id=endpoint.id,
-                minutes=5
-            )
-            should_trigger_ai = failed_count >= 3
-            
-            return log, should_trigger_ai
+            return log, False
     
     async def check_all_active_endpoints(self) -> Dict[str, Any]:
-        """Check all active API endpoints."""
+        """Check all active API endpoints with error isolation."""
         from app.services.user_service import UserService
         from app.services.email_service import EmailService
         
@@ -253,7 +255,6 @@ class HealthChecker:
             "errors": []
         }
         
-        # Track previous status for email alerts
         previous_status = {}
         
         for endpoint in endpoints:
@@ -262,61 +263,62 @@ class HealthChecker:
                 
                 if log.status == CheckStatus.SUCCESS:
                     results["successful"] += 1
-                    
-                    # Check if endpoint recovered (was failing before)
                     prev_status = previous_status.get(endpoint.id)
                     if prev_status and prev_status != CheckStatus.SUCCESS:
-                        # Endpoint recovered - send recovery email
-                        user_service = UserService(self.db)
-                        user = await user_service.get_user_by_id(endpoint.user_id)
-                        if user:
-                            email_service = EmailService()
-                            await email_service.send_api_recovered_notification(
-                                to_email=user.email,
-                                api_name=endpoint.name,
-                                api_url=endpoint.url,
-                                downtime_minutes=5  # Approximate
-                            )
+                        try:
+                            user_service = UserService(self.db)
+                            user = await user_service.get_user_by_id(endpoint.user_id)
+                            if user:
+                                email_service = EmailService()
+                                await email_service.send_api_recovered_notification(
+                                    to_email=user.email,
+                                    api_name=endpoint.name,
+                                    api_url=endpoint.url,
+                                    downtime_minutes=5
+                                )
+                        except Exception as e:
+                            logger.warning(f"Recovery email failed: {e}")
                 else:
                     results["failed"] += 1
-                    
-                    # Check for consecutive failures for email alert
-                    failed_count = await self.monitoring_service.get_failed_checks_count(
-                        api_endpoint_id=endpoint.id,
-                        minutes=10
-                    )
-                    
-                    # Send email alert on consecutive failures (3+ failures)
-                    if failed_count >= 3:
-                        user_service = UserService(self.db)
-                        user = await user_service.get_user_by_id(endpoint.user_id)
-                        if user:
-                            email_service = EmailService()
-                            await email_service.send_api_down_notification(
-                                to_email=user.email,
-                                api_name=endpoint.name,
-                                api_url=endpoint.url,
-                                error_message=log.error_message or "Multiple failures detected",
-                                failure_count=failed_count
-                            )
+                    try:
+                        failed_count = await self.monitoring_service.get_failed_checks_count(
+                            api_endpoint_id=endpoint.id,
+                            minutes=10
+                        )
+                        if failed_count >= 3:
+                            user_service = UserService(self.db)
+                            user = await user_service.get_user_by_id(endpoint.user_id)
+                            if user:
+                                email_service = EmailService()
+                                await email_service.send_api_down_notification(
+                                    to_email=user.email,
+                                    api_name=endpoint.name,
+                                    api_url=endpoint.url,
+                                    error_message=log.error_message or "Multiple failures",
+                                    failure_count=failed_count
+                                )
+                    except Exception as e:
+                        logger.warning(f"Down notification failed: {e}")
                 
-                # Store previous status
                 previous_status[endpoint.id] = log.status
                 
-                # Trigger AI analysis if needed
                 if should_trigger_ai:
-                    await self.ai_service.check_and_trigger_analysis(
-                        api_endpoint_id=endpoint.id,
-                        user_id=endpoint.user_id
-                    )
+                    try:
+                        await self.ai_service.check_and_trigger_analysis(
+                            api_endpoint_id=endpoint.id,
+                            user_id=endpoint.user_id
+                        )
+                    except Exception as e:
+                        logger.warning(f"AI analysis trigger failed: {e}")
             
             except Exception as e:
                 results["failed"] += 1
                 results["errors"].append({
                     "endpoint_id": endpoint.id,
+                    "endpoint_name": endpoint.name,
                     "error": str(e)
                 })
-                logger.error(f"Failed to check endpoint {endpoint.id}: {e}")
+                logger.error(f"Failed endpoint check {endpoint.id}: {e}")
         
         return results
 
@@ -328,30 +330,24 @@ async def run_health_check():
     logger.info("Starting health check cycle...")
     
     async with AsyncSessionLocal() as db:
-        # Use global HTTP client for efficiency
         http_client = await get_global_http_client()
         checker = HealthChecker(db, http_client=http_client)
         try:
             results = await checker.check_all_active_endpoints()
             await db.commit()
             logger.info(
-                f"Health check cycle completed: "
-                f"total={results['total']}, "
-                f"successful={results['successful']}, "
-                f"failed={results['failed']}"
+                f"Health check completed: total={results['total']}, "
+                f"successful={results['successful']}, failed={results['failed']}"
             )
             return results
         except Exception as e:
             await db.rollback()
             logger.error(f"Health check cycle failed: {e}")
             raise
-        finally:
-            # Don't close the global client here
-            pass
 
 
 async def run_health_check_single_endpoint(endpoint_id: int):
-    """Run health check for a single endpoint (for testing)."""
+    """Run health check for a single endpoint (for testing/manual trigger)."""
     from app.core.database import AsyncSessionLocal
     
     logger.info(f"Running single health check for endpoint {endpoint_id}...")
@@ -363,7 +359,6 @@ async def run_health_check_single_endpoint(endpoint_id: int):
         http_client = await get_global_http_client()
         checker = HealthChecker(db, http_client=http_client)
         
-        # Get the endpoint
         result = await db.execute(
             select(ApiEndpoint).where(ApiEndpoint.id == endpoint_id)
         )
