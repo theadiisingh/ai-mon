@@ -8,9 +8,9 @@ export default function AddApiPage() {
     name: '',
     url: '',
     method: 'GET',
-    interval: 60,
-    timeout: 30,
-    expected_status: 200,
+    interval_seconds: 60,
+    timeout_seconds: 30,
+    expected_status_code: 200,
     headers: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -20,7 +20,7 @@ export default function AddApiPage() {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'interval' || name === 'timeout' || name === 'expected_status' 
+      [name]: name === 'interval_seconds' || name === 'timeout_seconds' || name === 'expected_status_code' 
         ? parseInt(value) || 0 
         : value
     }))
@@ -35,11 +35,19 @@ export default function AddApiPage() {
       const headers = formData.headers 
         ? JSON.parse(formData.headers) 
         : {}
+
+      // Map form field names to API field names
+      const apiData = {
+        name: formData.name,
+        url: formData.url,
+        method: formData.method,
+        headers: headers,
+        expected_status_code: formData.expected_status_code,
+        timeout_seconds: formData.timeout_seconds,
+        interval_seconds: formData.interval_seconds,
+      }
       
-      await apiApi.create({
-        ...formData,
-        headers,
-      })
+      await apiApi.create(apiData)
       
       navigate('/dashboard')
     } catch (err: any) {
@@ -117,14 +125,14 @@ export default function AddApiPage() {
             </div>
 
             <div>
-              <label htmlFor="expected_status" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="expected_status_code" className="block text-sm font-medium text-gray-700">
                 Expected Status
               </label>
               <input
                 type="number"
-                id="expected_status"
-                name="expected_status"
-                value={formData.expected_status}
+                id="expected_status_code"
+                name="expected_status_code"
+                value={formData.expected_status_code}
                 onChange={handleChange}
                 required
                 className="input mt-1"
@@ -136,14 +144,14 @@ export default function AddApiPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="interval" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="interval_seconds" className="block text-sm font-medium text-gray-700">
                 Check Interval (seconds)
               </label>
               <input
                 type="number"
-                id="interval"
-                name="interval"
-                value={formData.interval}
+                id="interval_seconds"
+                name="interval_seconds"
+                value={formData.interval_seconds}
                 onChange={handleChange}
                 required
                 className="input mt-1"
@@ -152,14 +160,14 @@ export default function AddApiPage() {
             </div>
 
             <div>
-              <label htmlFor="timeout" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="timeout_seconds" className="block text-sm font-medium text-gray-700">
                 Timeout (seconds)
               </label>
               <input
                 type="number"
-                id="timeout"
-                name="timeout"
-                value={formData.timeout}
+                id="timeout_seconds"
+                name="timeout_seconds"
+                value={formData.timeout_seconds}
                 onChange={handleChange}
                 required
                 className="input mt-1"

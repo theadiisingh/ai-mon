@@ -30,9 +30,9 @@ export interface ApiEndpoint {
 export interface ApiEndpointCreate {
   name: string
   url: string
-  method: HttpMethod
-  headers?: string
-  body?: string
+  method: HttpMethod | string
+  headers?: Record<string, string>
+  body?: unknown
   expected_status_code: number
   timeout_seconds: number
   interval_seconds: number

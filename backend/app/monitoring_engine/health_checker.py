@@ -333,6 +333,7 @@ async def run_health_check():
         checker = HealthChecker(db, http_client=http_client)
         try:
             results = await checker.check_all_active_endpoints()
+            await db.commit()
             logger.info(
                 f"Health check cycle completed: "
                 f"total={results['total']}, "
@@ -341,6 +342,7 @@ async def run_health_check():
             )
             return results
         except Exception as e:
+            await db.rollback()
             logger.error(f"Health check cycle failed: {e}")
             raise
         finally:
