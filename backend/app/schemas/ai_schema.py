@@ -1,6 +1,4 @@
-"""
-AI Insight Pydantic schemas for request/response validation.
-"""
+"""AI Insight Pydantic schemas for request/response validation."""
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
@@ -79,11 +77,11 @@ class AIAnalysisRequest(BaseModel):
 
 class AIAnalysisResponse(BaseModel):
     """Schema for AI analysis response."""
-    summary: str
-    possible_causes: List[str]
-    suggested_steps: List[str]
-    confidence_score: float
-    model_used: str
-    tokens_used: int
+    summary: str = ""
+    possible_causes: List[str] = Field(default_factory=list)
+    suggested_steps: List[str] = Field(default_factory=list)
+    confidence_score: float = 0.0
+    model_used: str = "system"
+    tokens_used: int = 0
     
     model_config = ConfigDict(protected_namespaces=())

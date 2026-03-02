@@ -25,9 +25,11 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Don't redirect automatically - let the AuthContext handle logout
+    // This prevents the site from going down on page reload
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      // Just reject, don't redirect immediately
+      // The AuthContext will handle the logout on next auth check
     }
     return Promise.reject(error)
   }

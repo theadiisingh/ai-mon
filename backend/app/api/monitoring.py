@@ -201,20 +201,33 @@ async def analyze_endpoint(
             detail="Endpoint not found"
         )
     
-    result = await ai_service.analyze_failures(
-        api_endpoint_id=analysis_request.api_endpoint_id,
-        user_id=current_user.id,
-        log_ids=analysis_request.log_ids if analysis_request.log_ids else None,
-        hours=analysis_request.time_range_hours
-    )
-    
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Not enough failure data for analysis"
+    try:
+        result = await ai_service.analyze_failures(
+            api_endpoint_id=analysis_request.api_endpoint_id,
+            user_id=current_user.id,
+            log_ids=analysis_request.log_ids if analysis_request.log_ids else None,
+            hours=analysis_request.time_range_hours
         )
-    
-    return result
+        
+        # Commit the insight to the database
+        await db.commit()
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Not enough failure data for analysis"
+            )
+        
+        return result
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analysis failed: {str(e)}"
+        )
 
 
 @router.get("/endpoints/{endpoint_id}/insights")

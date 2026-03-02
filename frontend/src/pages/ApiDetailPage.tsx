@@ -10,7 +10,6 @@ import UptimeChart from '../components/charts/UptimeChart'
 import LogsTable from '../components/logs/LogsTable'
 import AiInsightPanel from '../components/logs/AiInsightPanel'
 import StatCard from '../components/dashboard/StatCard'
-import StatusBadge from '../components/dashboard/StatusBadge'
 import { formatPercentage, formatDuration } from '../utils/formatters'
 
 export default function ApiDetailPage() {

@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { apiApi } from '../api/apiApi'
 import ApiTable from '../components/dashboard/ApiTable'
 import StatCard from '../components/dashboard/StatCard'
-import { formatPercentage, formatNumber } from '../utils/formatters'
+import { formatPercentage } from '../utils/formatters'
 
 export default function DashboardPage() {
-  const { data: apisData, isLoading } = useQuery({
+  const { data: apisData } = useQuery({
     queryKey: ['apis'],
     queryFn: async () => {
       const response = await apiApi.list()

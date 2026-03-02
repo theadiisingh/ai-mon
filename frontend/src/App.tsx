@@ -10,6 +10,7 @@ import Layout from './components/layout/Layout'
 function App() {
   const { isAuthenticated, loading } = useAuth()
 
+  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

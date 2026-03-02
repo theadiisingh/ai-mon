@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { User, Token } from '../types/user'
+import { User } from '../types/user'
 import { authApi } from '../api/authApi'
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, username: string, password: string) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -18,23 +19,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    checkAuth()
+    // Check for token on mount
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      // Validate token and get user
+      authApi.me()
+        .then((response) => {
+          setUser(response.data)
+        })
+        .catch(() => {
+          // Token invalid, clear it but don't redirect immediately
+          localStorage.removeItem('access_token')
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    } else {
+      setLoading(false)
+    }
   }, [])
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      setLoading(false)
-      return
-    }
-
+  const refreshUser = async () => {
     try {
       const response = await authApi.me()
       setUser(response.data)
     } catch (error) {
-      localStorage.removeItem('access_token')
-    } finally {
-      setLoading(false)
+      console.error('Failed to refresh user:', error)
     }
   }
 
@@ -65,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        refreshUser,
       }}
     >
       {children}

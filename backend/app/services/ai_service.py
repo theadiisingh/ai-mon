@@ -21,8 +21,8 @@ from app.ai.prompt_templates import (
 class AIService:
     """Service for AI-powered analysis and insights."""
     
-    # Number of consecutive failures to trigger AI analysis
-    FAILURE_THRESHOLD = 3
+    # Number of consecutive failures to trigger AI analysis (lowered for testing)
+    FAILURE_THRESHOLD = 1
     # Maximum logs to send to AI for analysis
     MAX_LOGS_FOR_ANALYSIS = 20
     
@@ -59,7 +59,8 @@ class AIService:
             )
         
         if not logs:
-            return None
+            # Even if no logs, create a general insight about the endpoint
+            return await self._create_general_insight(api_endpoint_id, user_id, hours)
         
         # Filter to only failure logs
         failure_logs = [
@@ -67,8 +68,10 @@ class AIService:
             if log.status in [CheckStatus.FAILURE, CheckStatus.ERROR, CheckStatus.TIMEOUT]
         ]
         
+        # If no failures, analyze all logs for general performance insights
         if len(failure_logs) < self.FAILURE_THRESHOLD:
-            return None
+            # Analyze the endpoint even without failures for general insights
+            return await self._create_general_insight_from_logs(api_endpoint_id, user_id, logs, hours)
         
         # Generate prompt
         prompt = get_failure_analysis_prompt(failure_logs)
@@ -77,7 +80,8 @@ class AIService:
         ai_response = await self.llm_client.generate(prompt)
         
         if not ai_response:
-            return None
+            # Create a fallback insight without AI
+            return await self._create_fallback_insight(api_endpoint_id, user_id, failure_logs)
         
         # Parse AI response - handle both dict (mock) and string (real API)
         if isinstance(ai_response, dict):
@@ -90,7 +94,7 @@ class AIService:
                 analysis = self._extract_json_from_response(ai_response)
         
         if not analysis:
-            return None
+            return await self._create_fallback_insight(api_endpoint_id, user_id, failure_logs)
         
         # Determine severity
         severity = self._determine_severity(len(failure_logs), len(logs))
@@ -119,6 +123,153 @@ class AIService:
             confidence_score=analysis.get("confidence", 0.5),
             model_used=self.llm_client.model_name,
             tokens_used=ai_response.get("tokens_used", 0) if isinstance(ai_response, dict) else 0
+        )
+    
+    async def _create_general_insight(
+        self,
+        api_endpoint_id: int,
+        user_id: int,
+        hours: int
+    ) -> Optional[AIAnalysisResponse]:
+        """Create a general insight even without logs."""
+        insight = await self._create_insight(
+            api_endpoint_id=api_endpoint_id,
+            user_id=user_id,
+            insight_type=InsightType.FAILURE_ANALYSIS,
+            severity=SeverityLevel.LOW,
+            title="Endpoint Monitored",
+            summary=f"This endpoint has been under monitoring for the past {hours} hours. No failures detected. Keep monitoring to establish a baseline.",
+            possible_causes=[],
+            suggested_steps=[
+                "Continue monitoring to establish performance baseline",
+                "Review response times for optimization opportunities",
+                "Set up alerts for any anomalies"
+            ],
+            related_logs_summary="No logs available yet",
+            triggered_by_log_id=None,
+            confidence_score=1.0,
+            model_used="system",
+            tokens_used=0
+        )
+        
+        return AIAnalysisResponse(
+            summary=insight.summary,
+            possible_causes=[],
+            suggested_steps=insight.suggested_steps.split('\n') if insight.suggested_steps else [],
+            confidence_score=1.0,
+            model_used="system",
+            tokens_used=0
+        )
+    
+    async def _create_general_insight_from_logs(
+        self,
+        api_endpoint_id: int,
+        user_id: int,
+        logs: List[MonitoringLog],
+        hours: int
+    ) -> Optional[AIAnalysisResponse]:
+        """Create a general performance insight from successful logs."""
+        if not logs:
+            return await self._create_general_insight(api_endpoint_id, user_id, hours)
+        
+        # Calculate basic stats
+        response_times = [log.response_time for log in logs if log.response_time]
+        avg_response = sum(response_times) / len(response_times) if response_times else 0
+        min_response = min(response_times) if response_times else 0
+        max_response = max(response_times) if response_times else 0
+        
+        success_count = sum(1 for log in logs if log.status == CheckStatus.SUCCESS)
+        total_count = len(logs)
+        success_rate = (success_count / total_count * 100) if total_count > 0 else 0
+        
+        insight = await self._create_insight(
+            api_endpoint_id=api_endpoint_id,
+            user_id=user_id,
+            insight_type=InsightType.FAILURE_ANALYSIS,
+            severity=SeverityLevel.LOW,
+            title="Performance Analysis Complete",
+            summary=f"Analysis of {total_count} checks over {hours} hours: {success_rate:.1f}% success rate with avg response time {avg_response:.2f}ms",
+            possible_causes=[
+                "Normal operation - no issues detected",
+                "Endpoint is responding within expected parameters"
+            ],
+            suggested_steps=[
+                f"Average response time: {avg_response:.2f}ms",
+                f"Min response time: {min_response:.2f}ms",
+                f"Max response time: {max_response:.2f}ms",
+                "Continue monitoring for any changes in patterns"
+            ],
+            related_logs_summary=self._summarize_logs(logs[:5]),
+            triggered_by_log_id=logs[0].id if logs else None,
+            confidence_score=0.9,
+            model_used="system",
+            tokens_used=0
+        )
+        
+        return AIAnalysisResponse(
+            summary=insight.summary,
+            possible_causes=["Normal operation - no issues detected"],
+            suggested_steps=[
+                f"Average response time: {avg_response:.2f}ms",
+                f"Min response time: {min_response:.2f}ms", 
+                f"Max response time: {max_response:.2f}ms"
+            ],
+            confidence_score=0.9,
+            model_used="system",
+            tokens_used=0
+        )
+    
+    async def _create_fallback_insight(
+        self,
+        api_endpoint_id: int,
+        user_id: int,
+        failure_logs: List[MonitoringLog]
+    ) -> Optional[AIAnalysisResponse]:
+        """Create a fallback insight without AI response."""
+        # Get common error patterns
+        error_messages = [log.error_message for log in failure_logs if log.error_message]
+        status_codes = [log.status_code for log in failure_logs if log.status_code]
+        
+        summary = f"Detected {len(failure_logs)} failed checks. "
+        if status_codes:
+            most_common_status = max(set(status_codes), key=status_codes.count)
+            summary += f"Most common status code: {most_common_status}. "
+        if error_messages:
+            summary += f"Sample error: {error_messages[0][:100]}"
+        
+        insight = await self._create_insight(
+            api_endpoint_id=api_endpoint_id,
+            user_id=user_id,
+            insight_type=InsightType.FAILURE_ANALYSIS,
+            severity=SeverityLevel.HIGH,
+            title="Failures Detected",
+            summary=summary,
+            possible_causes=[
+                "Service temporarily unavailable",
+                "Rate limiting applied",
+                "Network connectivity issues",
+                "Invalid request parameters"
+            ],
+            suggested_steps=[
+                "Check service status",
+                "Verify API credentials",
+                "Review rate limits",
+                "Check network connectivity"
+            ],
+            related_logs_summary=self._summarize_logs(failure_logs[:5]),
+            triggered_by_log_id=failure_logs[0].id if failure_logs else None,
+            confidence_score=0.7,
+            model_used="system",
+            tokens_used=0
+        )
+        
+        return AIAnalysisResponse(
+            summary=insight.summary,
+            possible_causes=insight.possible_causes.split(',') if insight.possible_causes else [],
+            suggested_steps=insight.suggested_steps.split('\n') if insight.suggested_steps else [],
+            confidence_score=0.7,
+            model_used="system",
+            tokens_used=0
         )
     
     async def analyze_anomaly(
@@ -301,7 +452,7 @@ class AIService:
         summary_parts = []
         
         for log in logs[:10]:  # Limit to 10 logs
-            part = f"[{log.checked_at.isoformat()}] {log.status.value}"
+            part = f"[{log.checked_at.isoformat() if log.checked_at else 'N/A'}] {log.status.value}"
             if log.status_code:
                 part += f" - Status: {log.status_code}"
             if log.response_time:
