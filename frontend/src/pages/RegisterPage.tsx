@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 export default function RegisterPage() {
@@ -10,7 +10,6 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
-  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,10 +28,17 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      console.log('[RegisterPage] Attempting registration for:', email)
       await register(email, username, password)
-      navigate('/dashboard')
+      console.log('[RegisterPage] Registration successful, navigating to dashboard')
+      
+      // Use window.location for reliable redirect
+      window.location.href = '/dashboard'
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed')
+      console.error('[RegisterPage] Registration error:', err)
+      // Error message is now handled in AuthContext
+      const errorMessage = err.message || 'Registration failed'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

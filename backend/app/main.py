@@ -95,6 +95,14 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
 )
 
+# Middleware to log ALL incoming requests
+@app.middleware("http")
+async def log_all_requests(request: Request, call_next):
+    log.info(f"[REQUEST] {request.method} {request.url.path}")
+    response = await call_next(request)
+    log.info(f"[RESPONSE] {request.method} {request.url.path} - Status: {response.status_code}")
+    return response
+
 # Include API router
 app.include_router(api_router, prefix="/api")
 

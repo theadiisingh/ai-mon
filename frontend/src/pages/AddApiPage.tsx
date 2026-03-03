@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiApi } from '../api/apiApi'
+import { HttpMethod } from '../types/api'
 
 export default function AddApiPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     name: '',
     url: '',
-    method: 'GET',
+    method: 'GET' as HttpMethod,
     interval_seconds: 60,
     timeout_seconds: 30,
     expected_status_code: 200,
@@ -22,6 +23,7 @@ export default function AddApiPage() {
       ...prev,
       [name]: name === 'interval_seconds' || name === 'timeout_seconds' || name === 'expected_status_code' 
         ? parseInt(value) || 0 
+        : name === 'method' ? value as HttpMethod
         : value
     }))
   }
@@ -40,7 +42,7 @@ export default function AddApiPage() {
       const apiData = {
         name: formData.name,
         url: formData.url,
-        method: formData.method,
+        method: formData.method as HttpMethod,
         headers: headers,
         expected_status_code: formData.expected_status_code,
         timeout_seconds: formData.timeout_seconds,

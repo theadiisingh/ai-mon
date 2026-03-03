@@ -97,8 +97,11 @@ class TestAuthenticationAPI:
         
         assert response.status_code == 201
         data = response.json()
-        assert data["email"] == "newuser@example.com"
-        assert data["username"] == "newuser"
+        # Response has user nested inside 'user' key plus tokens at top level
+        assert data["user"]["email"] == "newuser@example.com"
+        assert data["user"]["username"] == "newuser"
+        assert "access_token" in data
+        assert "refresh_token" in data
     
     @pytest.mark.asyncio
     async def test_register_duplicate_email(self, client: AsyncClient, test_user: User):

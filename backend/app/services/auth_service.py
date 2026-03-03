@@ -4,6 +4,7 @@ Authentication service for login, registration, and token management.
 from typing import Optional
 from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from app.models.user import User
 from app.schemas.auth_schema import LoginRequest, RegisterRequest
@@ -27,20 +28,31 @@ class AuthService:
     
     async def login(self, login_data: LoginRequest) -> Optional[Token]:
         """Authenticate user and generate tokens."""
-        # Get user by email
-        user = await self.user_service.get_user_by_email(login_data.email)
+        # Get user by email (lowercase for case-insensitive lookup)
+        email_lower = login_data.email.lower()
+        user = await self.user_service.get_user_by_email(email_lower)
         
         if not user:
+            logger.warning(f"Login failed: User not found for email: {email_lower}")
             return None
         
+        logger.info(f"User found: {user.id}, {user.email}, is_active={user.is_active}")
+        logger.info(f"Hashed password in DB: {user.hashed_password[:50]}...")
+        
         # Verify password
-        if not verify_password(login_data.password, user.hashed_password):
+        password_verified = verify_password(login_data.password, user.hashed_password)
+        logger.info(f"Password verification result: {password_verified}")
+        
+        if not password_verified:
+            logger.warning(f"Login failed: Password verification failed for email: {email_lower}")
             return None
         
         # Check if user is active
         if not user.is_active:
+            logger.warning(f"Login failed: User is inactive: {email_lower}")
             return None
         
+        logger.info(f"Login successful for user: {user.id}")
         # Generate tokens
         return await self._generate_tokens(user)
     
@@ -85,16 +97,22 @@ class AuthService:
     
     async def _generate_tokens(self, user: User) -> Token:
         """Generate access and refresh tokens for a user."""
+        logger.info(f"[AUTH_SERVICE] Generating tokens for user_id: {user.id}")
+        
         # Create access token
         access_token = create_access_token(
             data={"sub": str(user.id)},
             expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
         )
         
+        logger.info(f"[AUTH_SERVICE] Access token created: {access_token[:50]}...")
+        
         # Create refresh token
         refresh_token = create_refresh_token(
             data={"sub": str(user.id)}
         )
+        
+        logger.info(f"[AUTH_SERVICE] Refresh token created: {refresh_token[:50]}...")
         
         return Token(
             access_token=access_token,

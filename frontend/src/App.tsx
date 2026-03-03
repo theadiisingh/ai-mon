@@ -10,6 +10,9 @@ import Layout from './components/layout/Layout'
 
 function App() {
   const { isAuthenticated, loading } = useAuth()
+  
+  // Also check token directly to ensure proper auth state detection
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('access_token')
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -19,6 +22,9 @@ function App() {
       </div>
     )
   }
+  
+  // Use both user state and token for authentication check
+  const isAuth = isAuthenticated || hasToken
 
   return (
     <>
@@ -47,10 +53,10 @@ function App() {
         }}
       />
       <Routes>
-        <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
-        <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/login" element={!isAuth ? <LoginPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/register" element={!isAuth ? <RegisterPage /> : <Navigate to="/dashboard" />} />
         
-        <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
+        <Route path="/" element={isAuth ? <Layout /> : <Navigate to="/login" />}>
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="apis/new" element={<AddApiPage />} />

@@ -3,7 +3,7 @@ Main API router that combines all sub-routers.
 """
 from fastapi import APIRouter
 
-from app.api import auth, users, apis, monitoring, metrics
+from app.api import auth, users, apis, monitoring, metrics, debug
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(apis.router, prefix="/apis", tags=["API Endpoints"])
 api_router.include_router(monitoring.router, prefix="/monitoring", tags=["Monitoring"])
 api_router.include_router(metrics.router, prefix="/metrics", tags=["Metrics"])
+api_router.include_router(debug.router, prefix="/debug", tags=["Debug"])

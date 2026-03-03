@@ -52,12 +52,31 @@ class Settings(BaseSettings):
     email_from: str = "ai-mon@example.com"
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        # Parse explicitly configured origins
+        origins = [origin.strip() for origin in self.cors_origins.split(",")]
+        
+        # Add explicit localhost origins for development
+        # These work with allow_credentials=True
+        explicit_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8000",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:8000",
+        ]
+        
+        # Add any origins not already in the list
+        for origin in explicit_origins:
+            if origin not in origins:
+                origins.append(origin)
+        
+        return origins
 
     @model_validator(mode='after')
     def validate_production_settings(self):

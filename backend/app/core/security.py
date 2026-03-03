@@ -4,7 +4,7 @@ Security module for JWT token handling and password hashing with production-read
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt, ExpiredSignatureError
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,21 +13,28 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.utils.logger import log
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # OAuth2 scheme with token URL
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        log.error(f"Password verification error: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -66,18 +73,26 @@ def create_refresh_token(data: dict) -> str:
 
 def decode_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT token with proper error handling."""
+    log.info(f"[SECURITY] decode_token called with token: {token[:50] if token else 'None'}...")
+    log.info(f"[SECURITY] Using secret_key: {settings.secret_key[:20]}...")
+    log.info(f"[SECURITY] Using algorithm: {settings.algorithm}")
+    
     try:
         payload = jwt.decode(
             token, 
             settings.secret_key, 
             algorithms=[settings.algorithm]
         )
+        log.info(f"[SECURITY] Token decoded successfully. Payload: {payload}")
         return payload
     except ExpiredSignatureError:
-        log.warning("Token has expired")
+        log.warning("[SECURITY] Token has expired")
         return None
     except JWTError as e:
-        log.warning(f"JWT decode error: {e}")
+        log.warning(f"[SECURITY] JWT decode error: {e}")
+        return None
+    except Exception as e:
+        log.error(f"[SECURITY] Unexpected error decoding token: {e}")
         return None
 
 

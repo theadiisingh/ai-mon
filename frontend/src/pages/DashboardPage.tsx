@@ -5,19 +5,24 @@ import ApiTable from '../components/dashboard/ApiTable'
 import StatCard from '../components/dashboard/StatCard'
 import { formatPercentage } from '../utils/formatters'
 import { ApiEndpoint } from '../types/api'
+import { useAuth } from '../hooks/useAuth'
 
 export default function DashboardPage() {
   const queryClient = useQueryClient()
+  const { isAuthenticated, loading: authLoading } = useAuth()
 
-  // Fetch APIs with auto-refresh
+  // Fetch APIs with auto-refresh - only when authenticated
   const { data: apisData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['apis'],
     queryFn: async () => {
       const response = await apiApi.list()
       return response.data
     },
+    enabled: isAuthenticated && !authLoading, // Only fetch when authenticated
     refetchInterval: 30000, // Auto-refresh every 30 seconds
     staleTime: 10000, // Consider data stale after 10 seconds
+    retry: 3, // Retry up to 3 times on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })
 
   // Manual refresh handler
@@ -37,8 +42,8 @@ export default function DashboardPage() {
     ? apis.reduce((sum: number, api: ApiEndpoint) => sum + (api.avg_response_time || 0), 0) / totalApis
     : 0
 
-  // Show loading skeleton
-  if (isLoading && !apisData) {
+  // Show loading skeleton while auth is loading
+  if (authLoading || (isLoading && !apisData)) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -77,8 +82,11 @@ export default function DashboardPage() {
     )
   }
 
-  // Show error state
+  // Show error state with better error message
   if (isError) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred while loading your APIs'
+    const isAuthError = errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('credentials')
+    
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -92,16 +100,30 @@ export default function DashboardPage() {
           <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h3 className="mt-4 text-lg font-medium text-red-800">Failed to load dashboard</h3>
+          <h3 className="mt-4 text-lg font-medium text-red-800">
+            {isAuthError ? 'Authentication Error' : 'Failed to load dashboard'}
+          </h3>
           <p className="mt-2 text-sm text-red-600">
-            {error instanceof Error ? error.message : 'An error occurred while loading your APIs'}
+            {isAuthError 
+              ? 'Your session may have expired. Please try logging in again.' 
+              : errorMessage}
           </p>
-          <button
-            onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-          >
-            Try Again
-          </button>
+          <div className="mt-4 flex justify-center gap-3">
+            {isAuthError && (
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              >
+                Go to Login
+              </Link>
+            )}
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     )

@@ -1,19 +1,19 @@
-import axiosClient from './axiosClient'
+import api from './api'
 import { ApiEndpoint, ApiEndpointCreate, ApiEndpointUpdate, ApiEndpointListResponse } from '../types/api'
 
 export const apiApi = {
   list: (params?: { page?: number; page_size?: number; search?: string }) =>
-    axiosClient.get<ApiEndpointListResponse>('/apis', { params }),
+    api.get<ApiEndpointListResponse>('/apis/', { params }),
   
-  get: (id: number) => axiosClient.get<ApiEndpoint>(`/apis/${id}`),
+  get: (id: number) => api.get<ApiEndpoint>(`/apis/${id}`),
   
   create: (data: ApiEndpointCreate) =>
-    axiosClient.post<ApiEndpoint>('/apis', data),
+    api.post<ApiEndpoint>('/apis/', data),
   
   update: (id: number, data: ApiEndpointUpdate) =>
-    axiosClient.put<ApiEndpoint>(`/apis/${id}`, data),
+    api.put<ApiEndpoint>(`/apis/${id}`, data),
   
-  delete: (id: number) => axiosClient.delete(`/apis/${id}`),
+  delete: (id: number) => api.delete(`/apis/${id}`),
   
-  toggle: (id: number) => axiosClient.post<ApiEndpoint>(`/apis/${id}/toggle`),
+  toggle: (id: number) => api.post<ApiEndpoint>(`/apis/${id}/toggle`),
 }

@@ -4,6 +4,9 @@ export interface User {
   username: string
   full_name?: string
   created_at: string
+  updated_at: string
+  is_active: boolean
+  is_superuser: boolean
 }
 
 export interface UserCreate {
@@ -23,5 +26,5 @@ export interface UserUpdate {
 export interface Token {
   access_token: string
   refresh_token: string
-  token_type: string
+  token_type?: string
 }
