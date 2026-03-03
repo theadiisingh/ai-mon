@@ -3,13 +3,13 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
-  const statusClasses = {
-    success: 'bg-success-100 text-success-700',
-    failure: 'bg-danger-100 text-danger-700',
-    error: 'bg-danger-100 text-danger-700',
-    timeout: 'bg-warning-100 text-warning-700',
-    active: 'bg-success-100 text-success-700',
-    inactive: 'bg-gray-100 text-gray-700',
+  const statusConfig = {
+    success: { bg: 'bg-success-50', text: 'text-success-700', border: 'border-success-200/60', dot: 'bg-success-500' },
+    failure: { bg: 'bg-danger-50', text: 'text-danger-700', border: 'border-danger-200/60', dot: 'bg-danger-500' },
+    error: { bg: 'bg-danger-50', text: 'text-danger-700', border: 'border-danger-200/60', dot: 'bg-danger-500' },
+    timeout: { bg: 'bg-warning-50', text: 'text-warning-700', border: 'border-warning-200/60', dot: 'bg-warning-500' },
+    active: { bg: 'bg-success-50', text: 'text-success-700', border: 'border-success-200/60', dot: 'bg-success-500' },
+    inactive: { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-200/80', dot: 'bg-zinc-400' },
   }
 
   const statusLabels = {
@@ -21,9 +21,12 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
     inactive: 'Inactive',
   }
 
+  const config = statusConfig[status]
+
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClasses[status]}`}>
-      {statusLabels[status]}
+    <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.text} border ${config.border} shadow-sm`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot} ${status === 'active' || status === 'success' ? 'animate-pulse' : ''}`}></span>
+      <span>{statusLabels[status]}</span>
     </span>
   )
 }

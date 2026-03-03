@@ -11,6 +11,32 @@ import LogsTable from '../components/logs/LogsTable'
 import AiInsightPanel from '../components/logs/AiInsightPanel'
 import StatCard from '../components/dashboard/StatCard'
 import { formatPercentage, formatDuration } from '../utils/formatters'
+import { motion, Variants } from 'framer-motion'
+import { Play, Pause, Trash2, Activity, Clock, Server, BarChart3, ChevronRight } from 'lucide-react'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+}
+
+const methodColors: Record<string, string> = {
+  GET: 'bg-blue-100 text-blue-700 ring-1 ring-blue-700/10',
+  POST: 'bg-green-100 text-green-700 ring-1 ring-green-700/10',
+  PUT: 'bg-amber-100 text-amber-700 ring-1 ring-amber-700/10',
+  DELETE: 'bg-red-100 text-red-700 ring-1 ring-red-700/10',
+  PATCH: 'bg-purple-100 text-purple-700 ring-1 ring-purple-700/10',
+  DEFAULT: 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-700/10'
+}
 
 export default function ApiDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -84,16 +110,33 @@ export default function ApiDetailPage() {
 
   if (apiLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-zinc-200 rounded-md animate-pulse"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card p-6 animate-pulse bg-white">
+              <div className="h-4 w-24 bg-zinc-100 rounded mb-4"></div>
+              <div className="h-8 w-16 bg-zinc-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="card h-80 animate-pulse bg-white"></div>
+          <div className="card h-80 animate-pulse bg-white"></div>
+        </div>
       </div>
     )
   }
 
   if (!apiData) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">API not found</p>
+      <div className="text-center py-20 px-6">
+        <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Server className="h-8 w-8 text-zinc-400" />
+        </div>
+        <h3 className="text-lg font-medium text-zinc-900 mb-1">Endpoint Not Found</h3>
+        <p className="text-zinc-500 mb-6">The API endpoint you are looking for might have been deleted or doesn't exist.</p>
+        <button onClick={() => navigate('/dashboard')} className="btn btn-primary">Return to Dashboard</button>
       </div>
     )
   }
@@ -117,85 +160,126 @@ export default function ApiDetailPage() {
   } : null
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-zinc-200/60">
         <div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">{api.name}</h1>
-            <span className={`px-2 py-1 rounded text-xs font-medium ${
-              api.method === 'GET' ? 'bg-blue-100 text-blue-700' :
-              api.method === 'POST' ? 'bg-green-100 text-green-700' :
-              api.method === 'PUT' ? 'bg-orange-100 text-orange-700' :
-              api.method === 'DELETE' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-700'
-            }`}>
+          <div className="flex items-center text-sm font-medium text-zinc-500 mb-3">
+            <button onClick={() => navigate('/dashboard')} className="hover:text-zinc-900 transition-colors">Dashboard</button>
+            <ChevronRight className="w-4 h-4 mx-1 text-zinc-300" />
+            <span className="text-zinc-900 truncate max-w-[200px] sm:max-w-xs">{api.name}</span>
+          </div>
+          <div className="flex items-center flex-wrap gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">{api.name}</h1>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${methodColors[api.method] || methodColors.DEFAULT}`}>
               {api.method}
             </span>
+            <span className="flex items-center text-sm">
+              <span className={`relative flex h-2 w-2 mr-2`}>
+                {api.is_active && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${api.is_active ? 'bg-success-500' : 'bg-warning-500'
+                  }`}></span>
+              </span>
+              <span className={`font-medium ${api.is_active ? 'text-success-700' : 'text-warning-700'}`}>
+                {api.is_active ? 'Active' : 'Paused'}
+              </span>
+            </span>
           </div>
-          <p className="text-gray-500 mt-1 font-mono text-sm">{api.url}</p>
+          <div className="flex items-center mt-3 p-2 bg-zinc-50 border border-zinc-200/80 rounded-lg inline-flex">
+            <code className="text-sm font-mono text-zinc-600 truncate max-w-full sm:max-w-md">{api.url}</code>
+          </div>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => toggleMutation.mutate()}
-            className="btn btn-secondary"
+            className="btn btn-secondary flex items-center gap-2 shadow-sm text-zinc-700 bg-white"
           >
-            {api.is_active ? 'Pause' : 'Resume'}
+            {api.is_active ? (
+              <><Pause className="w-4 h-4" /> Pause Monitoring</>
+            ) : (
+              <><Play className="w-4 h-4" /> Resume Monitoring</>
+            )}
           </button>
           <button
-            onClick={() => deleteMutation.mutate()}
-            className="btn btn-danger"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this endpoint?')) {
+                deleteMutation.mutate()
+              }
+            }}
+            className="btn btn-secondary border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 shadow-sm flex items-center gap-2 bg-white"
           >
-            Delete
+            <Trash2 className="w-4 h-4" /> Delete
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard
-          title="Status"
-          value={api.is_active ? 'Active' : 'Inactive'}
-          color={api.is_active ? 'success' : 'warning'}
-        />
-        <StatCard
-          title="Uptime (24h)"
-          value={formatPercentage(metrics.uptime_percentage)}
-          color={metrics.uptime_percentage >= 99 ? 'success' : 'danger'}
-        />
-        <StatCard
-          title="Avg Response"
-          value={formatDuration(metrics.avg_response_time)}
-        />
-        <StatCard
-          title="Total Checks"
-          value={metrics.total_checks}
-        />
-      </div>
+      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-6">
+        <motion.div variants={itemVariants}>
+          <StatCard
+            title="Monitoring Status"
+            value={api.is_active ? 'Active' : 'Paused'}
+            color={api.is_active ? 'success' : 'warning'}
+            icon={<Activity className="w-5 h-5" />}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard
+            title="System Uptime"
+            value={formatPercentage(metrics.uptime_percentage)}
+            subtitle="Trailing 24 hours"
+            color={metrics.uptime_percentage >= 99 ? 'success' : metrics.uptime_percentage >= 95 ? 'warning' : 'danger'}
+            icon={<Server className="w-5 h-5" />}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard
+            title="Avg Response Time"
+            value={formatDuration(metrics.avg_response_time)}
+            subtitle="Across all regions"
+            icon={<Clock className="w-5 h-5" />}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard
+            title="Total Health Checks"
+            value={metrics.total_checks}
+            subtitle="Since creation"
+            icon={<BarChart3 className="w-5 h-5" />}
+          />
+        </motion.div>
+      </motion.div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ResponseTimeChart data={[]} loading={metricsLoading} />
         <UptimeChart uptime={uptimeData} loading={metricsLoading} />
-      </div>
+      </motion.div>
 
-      {/* AI Insights */}
-      <AiInsightPanel
-        insights={insightsData || []}
-        onAnalyze={handleAnalyze}
-        analyzing={analyzing}
-      />
+      {/* AI Insights & Logs */}
+      <motion.div variants={containerVariants} className="space-y-6 lg:space-y-8">
+        <motion.div variants={itemVariants}>
+          <AiInsightPanel
+            insights={insightsData || []}
+            onAnalyze={handleAnalyze}
+            analyzing={analyzing}
+          />
+        </motion.div>
 
-      {/* Logs */}
-      <LogsTable logs={logsData || []} />
-    </div>
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-zinc-900 tracking-tight">Recent Activity Logs</h2>
+          </div>
+          <LogsTable logs={logsData || []} />
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }

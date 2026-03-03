@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { motion } from 'framer-motion'
+import { Activity } from 'lucide-react'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -31,12 +33,10 @@ export default function RegisterPage() {
       console.log('[RegisterPage] Attempting registration for:', email)
       await register(email, username, password)
       console.log('[RegisterPage] Registration successful, navigating to dashboard')
-      
-      // Use window.location for reliable redirect
+
       window.location.href = '/dashboard'
     } catch (err: any) {
       console.error('[RegisterPage] Registration error:', err)
-      // Error message is now handled in AuthContext
       const errorMessage = err.message || 'Registration failed'
       setError(errorMessage)
     } finally {
@@ -45,23 +45,38 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-primary-600 mb-2">AI MON</h1>
-          <h2 className="text-xl text-gray-600">Smart API Monitoring & Auto Debug</h2>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
+      {/* Premium Background Blurs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary-400/20 blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[100px] pointer-events-none"></div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-md w-full space-y-8 relative z-10"
+      >
+        <div className="text-center flex flex-col items-center">
+          <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center shadow-md mb-6">
+            <Activity className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight mb-2">Create an account</h1>
+          <h2 className="text-sm text-zinc-500 font-medium">Join us to start monitoring your APIs</h2>
         </div>
 
-        <div className="card p-8">
-          <h3 className="text-2xl font-semibold text-gray-900 mb-6">Create your account</h3>
-          
-          {error && (
-            <div className="mb-4 p-4 bg-danger-50 border border-danger-200 rounded-lg text-danger-600 text-sm">
-              {error}
-            </div>
-          )}
-
+        <div className="card shadow-floating border-zinc-200/60 bg-white/80 backdrop-blur-xl p-8 sm:p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2 font-medium"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></div>
+                {error}
+              </motion.div>
+            )}
+
             <div>
               <label htmlFor="email" className="label">
                 Email address
@@ -74,7 +89,7 @@ export default function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input"
+                className="input py-2.5 text-base"
                 placeholder="you@example.com"
               />
             </div>
@@ -91,7 +106,7 @@ export default function RegisterPage() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="input"
+                className="input py-2.5 text-base"
                 placeholder="johndoe"
               />
             </div>
@@ -108,7 +123,7 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input"
+                className="input py-2.5 text-base"
                 placeholder="••••••••"
               />
             </div>
@@ -125,7 +140,7 @@ export default function RegisterPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="input"
+                className="input py-2.5 text-base"
                 placeholder="••••••••"
               />
             </div>
@@ -133,7 +148,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary w-full flex justify-center items-center"
+              className="btn btn-primary w-full py-2.5 flex justify-center items-center shadow-md hover:shadow-lg transition-all"
             >
               {loading ? (
                 <>
@@ -149,16 +164,16 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="mt-8 text-center">
+            <p className="text-sm text-zinc-500 font-medium">
               Already have an account?{' '}
-              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+              <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
                 Sign in
               </Link>
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
