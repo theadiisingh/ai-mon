@@ -57,11 +57,27 @@ class TaskManager:
         except Exception as e:
             logger.warning(f"Error removing job: {e}")
         
-        # Shutdown scheduler
-        self.scheduler.shutdown()
+        # Shutdown scheduler with error handling for event loop issues
+        try:
+            self.scheduler.shutdown(wait=True)
+        except Exception as e:
+            logger.warning(f"Error shutting down scheduler: {e}")
         
-        # Close global HTTP client
-        await close_global_http_client()
+        # Close global HTTP client with event loop check
+        try:
+            # Check if event loop is running before trying to close
+            try:
+                loop = asyncio.get_running_loop()
+                # If we can get here, there's a running loop
+                await close_global_http_client()
+            except RuntimeError:
+                # No running event loop - use asyncio.run for cleanup
+                try:
+                    asyncio.run(close_global_http_client())
+                except Exception as e2:
+                    logger.warning(f"Error closing HTTP client (asyncio.run): {e2}")
+        except Exception as e:
+            logger.warning(f"Error closing HTTP client: {e}")
         
         self.is_running = False
         logger.info("Monitoring stopped")

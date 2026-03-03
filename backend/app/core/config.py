@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # Environment detection
+    # Set ENVIRONMENT=production to disable dev features
+    # If not set, defaults to 'development' when debug=True, 'production' otherwise
+    environment: str = ""
+
     # Database - Using SQLite for easier setup
     database_url: str = "sqlite+aiosqlite:///./aimon.db"
 
@@ -53,6 +58,15 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+
+    @property
+    def is_development(self) -> bool:
+        """Determine if the application is running in development mode."""
+        if self.environment:
+            # Explicit environment setting takes priority
+            return self.environment.lower() in ("development", "dev")
+        # Default: development if debug is True, production otherwise
+        return self.debug
 
     @property
     def cors_origins_list(self) -> List[str]:
