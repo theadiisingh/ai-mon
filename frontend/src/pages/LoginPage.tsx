@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
-import { Activity } from 'lucide-react'
+import { Shield, AlertTriangle } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,15 +17,10 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      console.log('[LoginPage] Attempting login for:', email)
       await login(email, password)
-      console.log('[LoginPage] Login successful, navigating to dashboard')
-
       window.location.href = '/dashboard'
     } catch (err: any) {
-      console.error('[LoginPage] Login error:', err)
       const errorMessage = err.message || 'Invalid credentials'
-      console.error('[LoginPage] Error message:', errorMessage)
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -33,41 +28,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
-      {/* Premium Background Blurs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary-400/20 blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[100px] pointer-events-none"></div>
-
+    <div className="min-h-screen flex items-center justify-center bg-surface-900 px-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-md w-full space-y-8 relative z-10"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-sm"
       >
-        <div className="text-center flex flex-col items-center">
-          <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center shadow-md mb-6">
-            <Activity className="w-7 h-7 text-white" />
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="w-10 h-10 bg-surface-700 rounded-md flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-5 h-5 text-content-secondary" />
           </div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight mb-2">Welcome back</h1>
-          <h2 className="text-sm text-zinc-500 font-medium">Please enter your details to sign in</h2>
+          <h1 className="text-lg font-semibold text-content-primary">Sign In</h1>
+          <p className="text-xs text-content-secondary mt-1">Access your intelligence dashboard</p>
         </div>
 
-        <div className="card shadow-floating border-zinc-200/60 bg-white/80 backdrop-blur-xl p-8 sm:p-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2 font-medium"
+                className="p-2.5 bg-danger/10 border border-danger/20 rounded-md text-danger text-xs flex items-center gap-2"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></div>
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 {error}
               </motion.div>
             )}
 
             <div>
               <label htmlFor="email" className="label">
-                Email address
+                Email
               </label>
               <input
                 id="email"
@@ -77,8 +69,8 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input py-2.5 text-base"
-                placeholder="you@example.com"
+                className="input"
+                placeholder="operator@company.com"
               />
             </div>
 
@@ -87,9 +79,6 @@ export default function LoginPage() {
                 <label htmlFor="password" className="label !mb-0">
                   Password
                 </label>
-                <a href="#" className="text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors">
-                  Forgot password?
-                </a>
               </div>
               <input
                 id="password"
@@ -99,7 +88,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input py-2.5 text-base"
+                className="input"
                 placeholder="••••••••"
               />
             </div>
@@ -107,27 +96,27 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary w-full py-2.5 flex justify-center items-center shadow-md hover:shadow-lg transition-all"
+              className="btn btn-primary w-full py-2 text-xs"
             >
               {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Signing in...
-                </>
+                </span>
               ) : (
-                'Sign in'
+                'Sign In'
               )}
             </button>
           </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm text-zinc-500 font-medium">
+          <div className="mt-5 pt-4 border-t border-border text-center">
+            <p className="text-xs text-content-secondary">
               Don't have an account?{' '}
-              <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
-                Sign up
+              <Link to="/register" className="text-primary hover:text-primary-light font-medium">
+                Request Access
               </Link>
             </p>
           </div>
@@ -136,3 +125,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

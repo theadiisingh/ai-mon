@@ -1,52 +1,54 @@
 import { useAuth } from '../../hooks/useAuth'
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, LogOut, User } from 'lucide-react'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-zinc-200/80 transition-all duration-200">
-      <div className="flex items-center justify-between px-6 py-3 md:px-8">
-        <div className="flex items-center space-x-4 flex-1">
-          {/* Optional Search Bar Placeholder for SaaS Feel */}
-          <div className="hidden md:flex items-center relative w-64">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3" />
+    <header className="sticky top-0 z-20 h-14 border-b border-border bg-surface-900/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between h-full px-6">
+        <div className="flex items-center gap-4 flex-1">
+          {/* Minimal search bar */}
+          <div className="hidden md:flex items-center relative w-72">
+            <Search className="w-3.5 h-3.5 text-content-tertiary absolute left-3" />
             <input
               type="text"
               placeholder="Search..."
-              className="w-full pl-9 pr-4 py-1.5 text-sm bg-zinc-100/50 border-transparent rounded-lg focus:bg-white focus:border-zinc-300 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all placeholder:text-zinc-500"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-surface-800 border border-border rounded-md text-content-primary placeholder:text-content-tertiary focus:bg-surface-700 focus:border-primary/50 focus:outline-none transition-colors"
             />
           </div>
         </div>
 
-        <div className="flex items-center space-x-5">
-          <button className="text-zinc-400 hover:text-zinc-600 transition-colors relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-primary-500 rounded-full border-2 border-white"></span>
+        <div className="flex items-center gap-4">
+          {/* Notifications - minimal */}
+          <button className="text-content-tertiary hover:text-content-secondary transition-colors p-1.5 rounded hover:bg-surface-800">
+            <Bell className="w-4 h-4" />
           </button>
 
-          <div className="h-6 w-px bg-zinc-200"></div>
+          <div className="h-4 w-px bg-border"></div>
 
-          <div className="flex items-center space-x-3">
-            <div className="text-sm text-right hidden sm:block">
-              <p className="font-semibold text-zinc-900 leading-tight">{user?.username}</p>
-              <p className="text-zinc-500 text-xs">{user?.email}</p>
+          {/* User Profile */}
+          <div className="flex items-center gap-2.5">
+            <div className="text-xs text-right hidden sm:block">
+              <p className="font-medium text-content-primary leading-tight">{user?.username}</p>
+              <p className="text-content-tertiary text-[10px]">{user?.email}</p>
             </div>
-            <div className="w-9 h-9 bg-gradient-to-tr from-primary-100 to-primary-50 border border-primary-200 rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-sm font-semibold text-primary-700">
-                {user?.username?.charAt(0).toUpperCase() || 'U'}
-              </span>
+            <div className="w-7 h-7 bg-surface-700 rounded-md flex items-center justify-center">
+              <User className="w-3.5 h-3.5 text-content-secondary" />
             </div>
           </div>
 
+          {/* Logout */}
           <button
             onClick={logout}
-            className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors ml-2"
+            className="text-xs font-medium text-content-tertiary hover:text-content-secondary transition-colors p-1.5 rounded hover:bg-surface-800"
+            title="Logout"
           >
-            Logout
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
     </header>
   )
 }
+

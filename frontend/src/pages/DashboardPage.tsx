@@ -14,14 +14,14 @@ const containerVariants: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.05
     }
   }
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0 }
 }
 
 export default function DashboardPage() {
@@ -61,28 +61,27 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <div className="h-8 w-48 bg-zinc-200 rounded-md animate-pulse"></div>
-            <div className="h-4 w-64 bg-zinc-100 rounded-md animate-pulse mt-2"></div>
+            <div className="h-7 w-40 bg-surface-700 rounded animate-pulse"></div>
+            <div className="h-4 w-56 bg-surface-800 rounded animate-pulse mt-2"></div>
           </div>
-          <div className="h-10 w-24 bg-zinc-200 rounded-lg animate-pulse"></div>
+          <div className="h-9 w-20 bg-surface-700 rounded animate-pulse"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="card p-6 animate-pulse bg-white">
-              <div className="h-4 w-24 bg-zinc-100 rounded mb-4"></div>
-              <div className="h-8 w-16 bg-zinc-200 rounded mb-2"></div>
-              <div className="h-3 w-32 bg-zinc-50 rounded"></div>
+            <div key={i} className="card p-4 animate-pulse">
+              <div className="h-3 w-20 bg-surface-700 rounded mb-3"></div>
+              <div className="h-6 w-16 bg-surface-700 rounded"></div>
             </div>
           ))}
         </div>
 
-        <div className="card overflow-hidden h-96">
-          <div className="animate-pulse bg-zinc-50/50 h-full w-full p-6">
-            <div className="h-10 bg-zinc-200 rounded-md bg-opacity-50 mb-6"></div>
-            <div className="space-y-4">
+        <div className="card overflow-hidden h-80">
+          <div className="animate-pulse bg-surface-800 h-full w-full p-4">
+            <div className="h-6 w-32 bg-surface-700 rounded mb-4"></div>
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-6 bg-zinc-100 rounded-md w-full"></div>
+                <div key={i} className="h-8 bg-surface-700 rounded w-full"></div>
               ))}
             </div>
           </div>
@@ -99,31 +98,31 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Dashboard</h1>
-            <p className="text-zinc-500 mt-1">Monitor your APIs in real-time</p>
+            <h1 className="text-xl font-semibold text-content-primary">System Outline</h1>
+            <p className="text-xs text-content-secondary mt-1">Real-time status of all your connected services</p>
           </div>
         </div>
 
-        <div className="bg-red-50/50 border border-red-200/60 rounded-xl p-8 text-center max-w-2xl mx-auto mt-12 shadow-sm">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-8 w-8 text-red-600" />
+        <div className="bg-danger/5 border border-danger/20 rounded-lg p-8 text-center max-w-lg mx-auto mt-12">
+          <div className="w-12 h-12 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-6 w-6 text-danger" />
           </div>
-          <h3 className="text-xl font-bold text-zinc-900">
-            {isAuthError ? 'Authentication Session Expired' : 'Failed to load monitoring data'}
+          <h3 className="text-sm font-semibold text-content-primary">
+            {isAuthError ? 'Session Expired' : 'Failed to Load Intelligence'}
           </h3>
-          <p className="mt-2 text-zinc-600">
+          <p className="mt-2 text-xs text-content-secondary">
             {isAuthError
-              ? 'Your secure session may have expired. Please log in again to continue.'
+              ? 'Your session may have expired. Please authenticate again.'
               : errorMessage}
           </p>
-          <div className="mt-8 flex justify-center gap-3">
+          <div className="mt-6 flex justify-center gap-2">
             {isAuthError && (
-              <Link to="/login" className="btn btn-primary">
-                Return to Login
+              <Link to="/login" className="btn btn-primary text-xs">
+                Authenticate
               </Link>
             )}
-            <button onClick={() => refetch()} className="btn btn-secondary border-red-200 text-red-700 hover:bg-red-50">
-              Try Again
+            <button onClick={() => refetch()} className="btn btn-secondary text-xs">
+              Retry
             </button>
           </div>
         </div>
@@ -136,37 +135,38 @@ export default function DashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-8"
+      className="space-y-6"
     >
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <motion.div variants={itemVariants}>
-          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">System Outline</h1>
-          <p className="text-sm text-zinc-500 mt-1">Real-time status of all your connected services</p>
+          <h1 className="text-xl font-semibold text-content-primary">System Outline</h1>
+          <p className="text-xs text-content-secondary mt-0.5">Real-time status of all your connected services</p>
         </motion.div>
-        <motion.div variants={itemVariants} className="flex items-center gap-3">
+        <motion.div variants={itemVariants} className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
             disabled={isFetching}
-            className="btn btn-secondary flex items-center gap-2 text-zinc-600 px-3 hover:text-zinc-900"
+            className="btn btn-secondary flex items-center gap-2 text-xs px-3 py-1.5"
             title="Refresh data"
           >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin text-primary-500' : ''}`} />
-            <span className="hidden sm:inline text-sm">{isFetching ? 'Syncing...' : 'Sync'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isFetching ? 'Syncing...' : 'Sync'}</span>
           </button>
-          <Link to="/apis/new" className="btn btn-primary flex items-center gap-2 shadow-sm hover:shadow-primary-100 px-4">
-            <Plus className="w-4 h-4" />
-            <span className="text-sm">Add Endpoint</span>
+          <Link to="/apis/new" className="btn btn-primary flex items-center gap-2 text-xs px-3 py-1.5">
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Endpoint</span>
           </Link>
         </motion.div>
       </div>
 
       {/* Stats Cards */}
-      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-6">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={itemVariants}>
           <StatCard
             title="Total Endpoints"
             value={totalApis}
-            icon={<Server className="w-6 h-6" />}
+            icon={<Server className="w-4 h-4" />}
             color="primary"
           />
         </motion.div>
@@ -174,7 +174,7 @@ export default function DashboardPage() {
           <StatCard
             title="Active Endpoints"
             value={activeApis}
-            icon={<Activity className="w-6 h-6" />}
+            icon={<Activity className="w-4 h-4" />}
             color="success"
           />
         </motion.div>
@@ -183,7 +183,7 @@ export default function DashboardPage() {
             title="System Availability"
             value={formatPercentage(avgUptime)}
             subtitle="Trailing 24 hours"
-            icon={<Clock className="w-6 h-6" />}
+            icon={<Clock className="w-4 h-4" />}
             color={avgUptime >= 99 ? 'success' : avgUptime >= 95 ? 'warning' : 'danger'}
           />
         </motion.div>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
             title="Avg Latency"
             value={`${avgResponseTime.toFixed(0)}ms`}
             subtitle="Global average"
-            icon={<Zap className="w-6 h-6" />}
+            icon={<Zap className="w-4 h-4" />}
             color="primary"
           />
         </motion.div>
@@ -200,11 +200,12 @@ export default function DashboardPage() {
 
       {/* API Table */}
       <motion.div variants={itemVariants}>
-        <div className="flex items-center justify-between mb-4 mt-8">
-          <h2 className="text-lg font-bold text-zinc-900 tracking-tight">Monitored Endpoints</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-content-primary">Monitored Endpoints</h2>
         </div>
         <ApiTable apis={apis} />
       </motion.div>
     </motion.div>
   )
 }
+

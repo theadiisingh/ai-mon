@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+
 interface StatCardProps {
   title: string
   value: string | number
@@ -11,38 +14,84 @@ interface StatCardProps {
 }
 
 export default function StatCard({ title, value, subtitle, icon, trend, color = 'primary' }: StatCardProps) {
-  const colorClasses = {
-    primary: 'bg-primary-50 text-primary-600 shadow-primary-100',
-    success: 'bg-success-50 text-success-600 shadow-success-100',
-    warning: 'bg-warning-50 text-warning-600 shadow-warning-100',
-    danger: 'bg-danger-50 text-danger-600 shadow-danger-100',
+  const [displayValue, setDisplayValue] = useState<string | number>(0)
+  
+  const colorConfig = {
+    primary: {
+      accent: 'text-primary',
+      iconBg: 'bg-surface-700',
+    },
+    success: {
+      accent: 'text-success',
+      iconBg: 'bg-surface-700',
+    },
+    warning: {
+      accent: 'text-warning',
+      iconBg: 'bg-surface-700',
+    },
+    danger: {
+      accent: 'text-danger',
+      iconBg: 'bg-surface-700',
+    },
   }
 
+  const config = colorConfig[color]
+
+  // Subtle number animation
+  useEffect(() => {
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0
+    if (!isNaN(numValue) && typeof value === 'number') {
+      const duration = 800
+      const steps = 20
+      const increment = numValue / steps
+      let current = 0
+      
+      const timer = setInterval(() => {
+        current += increment
+        if (current >= numValue) {
+          setDisplayValue(value)
+          clearInterval(timer)
+        } else {
+          setDisplayValue(Math.floor(current))
+        }
+      }, duration / steps)
+      
+      return () => clearInterval(timer)
+    } else {
+      setDisplayValue(value)
+    }
+  }, [value])
+
   return (
-    <div className="card p-6 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-floating">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card p-4 flex flex-col justify-between"
+    >
       <div className="flex items-start justify-between">
-        <div className="z-10">
-          <p className="text-sm font-medium text-zinc-500 tracking-wide">{title}</p>
-          <div className="flex items-baseline space-x-2 mt-2">
-            <h3 className="text-3xl font-bold text-zinc-900 tracking-tight">{value}</h3>
+        <div className="flex-1">
+          <p className="text-[11px] font-medium text-content-tertiary uppercase tracking-wide">{title}</p>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <h3 className="text-2xl font-semibold text-content-primary font-mono-nums">
+              {typeof value === 'number' ? displayValue : value}
+            </h3>
             {trend && (
-              <p className={`text-sm font-semibold flex items-center ${trend.isPositive ? 'text-success-600' : 'text-danger-600'}`}>
+              <p className={`text-xs font-medium ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </p>
             )}
           </div>
           {subtitle && (
-            <p className="text-sm text-zinc-500 mt-2">{subtitle}</p>
+            <p className="text-xs text-content-tertiary mt-1">{subtitle}</p>
           )}
         </div>
         {icon && (
-          <div className={`p-3 rounded-xl shadow-sm z-10 ${colorClasses[color]}`}>
-            {icon}
+          <div className={`p-2 rounded-md ${config.iconBg}`}>
+            <span className={config.accent}>{icon}</span>
           </div>
         )}
       </div>
-      {/* Decorative background blur */}
-      <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-20 blur-2xl ${colorClasses[color].split(' ')[0]}`}></div>
-    </div>
+    </motion.div>
   )
 }
+

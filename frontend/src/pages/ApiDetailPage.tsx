@@ -19,23 +19,22 @@ const containerVariants: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.05
     }
   }
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0 }
 }
 
 const methodColors: Record<string, string> = {
-  GET: 'bg-blue-100 text-blue-700 ring-1 ring-blue-700/10',
-  POST: 'bg-green-100 text-green-700 ring-1 ring-green-700/10',
-  PUT: 'bg-amber-100 text-amber-700 ring-1 ring-amber-700/10',
-  DELETE: 'bg-red-100 text-red-700 ring-1 ring-red-700/10',
-  PATCH: 'bg-purple-100 text-purple-700 ring-1 ring-purple-700/10',
-  DEFAULT: 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-700/10'
+  GET: 'bg-surface-700 text-surface-300 border-surface-600',
+  POST: 'bg-surface-700 text-surface-300 border-surface-600',
+  PUT: 'bg-surface-700 text-surface-300 border-surface-600',
+  DELETE: 'bg-surface-700 text-surface-300 border-surface-600',
+  PATCH: 'bg-surface-700 text-surface-300 border-surface-600',
 }
 
 export default function ApiDetailPage() {
@@ -111,18 +110,14 @@ export default function ApiDetailPage() {
   if (apiLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-zinc-200 rounded-md animate-pulse"></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="h-7 w-48 bg-surface-700 rounded animate-pulse"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="card p-6 animate-pulse bg-white">
-              <div className="h-4 w-24 bg-zinc-100 rounded mb-4"></div>
-              <div className="h-8 w-16 bg-zinc-200 rounded"></div>
+            <div key={i} className="card p-4 animate-pulse">
+              <div className="h-3 w-24 bg-surface-700 rounded mb-3"></div>
+              <div className="h-6 w-16 bg-surface-700 rounded"></div>
             </div>
           ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card h-80 animate-pulse bg-white"></div>
-          <div className="card h-80 animate-pulse bg-white"></div>
         </div>
       </div>
     )
@@ -130,13 +125,13 @@ export default function ApiDetailPage() {
 
   if (!apiData) {
     return (
-      <div className="text-center py-20 px-6">
-        <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Server className="h-8 w-8 text-zinc-400" />
+      <div className="text-center py-16 px-6">
+        <div className="w-12 h-12 bg-surface-700 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Server className="h-5 w-5 text-content-tertiary" />
         </div>
-        <h3 className="text-lg font-medium text-zinc-900 mb-1">Endpoint Not Found</h3>
-        <p className="text-zinc-500 mb-6">The API endpoint you are looking for might have been deleted or doesn't exist.</p>
-        <button onClick={() => navigate('/dashboard')} className="btn btn-primary">Return to Dashboard</button>
+        <h3 className="text-sm font-medium text-content-primary mb-1">Endpoint Not Found</h3>
+        <p className="text-xs text-content-secondary mb-5">The API endpoint you are looking for might have been deleted.</p>
+        <button onClick={() => navigate('/dashboard')} className="btn btn-primary text-xs">Return to Dashboard</button>
       </div>
     )
   }
@@ -164,47 +159,41 @@ export default function ApiDetailPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-8"
+      className="space-y-6"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-zinc-200/60">
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-border">
         <div>
-          <div className="flex items-center text-sm font-medium text-zinc-500 mb-3">
-            <button onClick={() => navigate('/dashboard')} className="hover:text-zinc-900 transition-colors">Dashboard</button>
-            <ChevronRight className="w-4 h-4 mx-1 text-zinc-300" />
-            <span className="text-zinc-900 truncate max-w-[200px] sm:max-w-xs">{api.name}</span>
+          <div className="flex items-center text-xs text-content-secondary mb-3">
+            <button onClick={() => navigate('/dashboard')} className="hover:text-content-primary transition-colors">Dashboard</button>
+            <ChevronRight className="w-3.5 h-3.5 mx-1 text-content-tertiary" />
+            <span className="text-content-primary truncate max-w-[200px]">{api.name}</span>
           </div>
-          <div className="flex items-center flex-wrap gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">{api.name}</h1>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${methodColors[api.method] || methodColors.DEFAULT}`}>
+          <div className="flex items-center flex-wrap gap-2">
+            <h1 className="text-lg font-semibold text-content-primary">{api.name}</h1>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${methodColors[api.method] || 'bg-surface-700 text-surface-400 border-surface-600'}`}>
               {api.method}
             </span>
-            <span className="flex items-center text-sm">
-              <span className={`relative flex h-2 w-2 mr-2`}>
-                {api.is_active && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-400 opacity-75"></span>
-                )}
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${api.is_active ? 'bg-success-500' : 'bg-warning-500'
-                  }`}></span>
-              </span>
-              <span className={`font-medium ${api.is_active ? 'text-success-700' : 'text-warning-700'}`}>
+            <span className="flex items-center text-xs">
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${api.is_active ? 'bg-success' : 'bg-warning'}`}></span>
+              <span className={`ml-2 ${api.is_active ? 'text-success' : 'text-warning'}`}>
                 {api.is_active ? 'Active' : 'Paused'}
               </span>
             </span>
           </div>
-          <div className="flex items-center mt-3 p-2 bg-zinc-50 border border-zinc-200/80 rounded-lg inline-flex">
-            <code className="text-sm font-mono text-zinc-600 truncate max-w-full sm:max-w-md">{api.url}</code>
+          <div className="flex items-center mt-2 p-2 bg-surface-800 border border-border rounded inline-flex max-w-full">
+            <code className="text-xs font-mono text-content-secondary truncate">{api.url}</code>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => toggleMutation.mutate()}
-            className="btn btn-secondary flex items-center gap-2 shadow-sm text-zinc-700 bg-white"
+            className="btn btn-secondary flex items-center gap-2 text-xs px-3 py-1.5"
           >
             {api.is_active ? (
-              <><Pause className="w-4 h-4" /> Pause Monitoring</>
+              <><Pause className="w-3.5 h-3.5" /> Pause</>
             ) : (
-              <><Play className="w-4 h-4" /> Resume Monitoring</>
+              <><Play className="w-3.5 h-3.5" /> Resume</>
             )}
           </button>
           <button
@@ -213,21 +202,21 @@ export default function ApiDetailPage() {
                 deleteMutation.mutate()
               }
             }}
-            className="btn btn-secondary border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 shadow-sm flex items-center gap-2 bg-white"
+            className="btn btn-secondary border-danger/30 text-danger hover:bg-danger/10 text-xs px-3 py-1.5 flex items-center gap-2"
           >
-            <Trash2 className="w-4 h-4" /> Delete
+            <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
         </div>
       </motion.div>
 
       {/* Stats Cards */}
-      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-6">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={itemVariants}>
           <StatCard
             title="Monitoring Status"
             value={api.is_active ? 'Active' : 'Paused'}
             color={api.is_active ? 'success' : 'warning'}
-            icon={<Activity className="w-5 h-5" />}
+            icon={<Activity className="w-4 h-4" />}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
@@ -236,15 +225,15 @@ export default function ApiDetailPage() {
             value={formatPercentage(metrics.uptime_percentage)}
             subtitle="Trailing 24 hours"
             color={metrics.uptime_percentage >= 99 ? 'success' : metrics.uptime_percentage >= 95 ? 'warning' : 'danger'}
-            icon={<Server className="w-5 h-5" />}
+            icon={<Server className="w-4 h-4" />}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
           <StatCard
             title="Avg Response Time"
             value={formatDuration(metrics.avg_response_time)}
-            subtitle="Across all regions"
-            icon={<Clock className="w-5 h-5" />}
+            subtitle="Across all checks"
+            icon={<Clock className="w-4 h-4" />}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
@@ -252,19 +241,19 @@ export default function ApiDetailPage() {
             title="Total Health Checks"
             value={metrics.total_checks}
             subtitle="Since creation"
-            icon={<BarChart3 className="w-5 h-5" />}
+            icon={<BarChart3 className="w-4 h-4" />}
           />
         </motion.div>
       </motion.div>
 
       {/* Charts */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ResponseTimeChart data={[]} loading={metricsLoading} />
         <UptimeChart uptime={uptimeData} loading={metricsLoading} />
       </motion.div>
 
       {/* AI Insights & Logs */}
-      <motion.div variants={containerVariants} className="space-y-6 lg:space-y-8">
+      <motion.div variants={containerVariants} className="space-y-6">
         <motion.div variants={itemVariants}>
           <AiInsightPanel
             insights={insightsData || []}
@@ -275,7 +264,7 @@ export default function ApiDetailPage() {
 
         <motion.div variants={itemVariants}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-zinc-900 tracking-tight">Recent Activity Logs</h2>
+            <h2 className="text-sm font-semibold text-content-primary">Recent Activity Logs</h2>
           </div>
           <LogsTable logs={logsData || []} />
         </motion.div>
@@ -283,3 +272,4 @@ export default function ApiDetailPage() {
     </motion.div>
   )
 }
+
