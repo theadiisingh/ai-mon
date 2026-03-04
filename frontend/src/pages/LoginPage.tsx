@@ -28,29 +28,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-surface-900 px-4 relative">
+      {/* Subtle background atmosphere */}
+      <div className="absolute inset-0 bg-atmosphere pointer-events-none" />
+      <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-sm"
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-sm relative z-10"
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-10 h-10 bg-surface-700 rounded-md flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-5 h-5 text-content-secondary" />
+          <div className="w-10 h-10 bg-surface-800/50 backdrop-blur-sm border border-white/5 rounded flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-5 h-5 text-accent-light" />
           </div>
           <h1 className="text-lg font-semibold text-content-primary">Sign In</h1>
-          <p className="text-xs text-content-secondary mt-1">Access your intelligence dashboard</p>
+          <p className="text-xs text-content-tertiary mt-1.5">Access your intelligence dashboard</p>
         </div>
 
-        <div className="card p-6">
+        <div className="bg-surface-800/20 backdrop-blur-xl rounded-lg border border-white/5 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-2.5 bg-danger/10 border border-danger/20 rounded-md text-danger text-xs flex items-center gap-2"
+                className="p-2.5 bg-danger/10 border border-danger/20 rounded text-danger text-xs flex items-center gap-2"
               >
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 {error}
@@ -112,8 +117,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-border text-center">
-            <p className="text-xs text-content-secondary">
+          <div className="mt-5 pt-4 border-t border-white/5 text-center">
+            <p className="text-xs text-content-tertiary">
               Don't have an account?{' '}
               <Link to="/register" className="text-primary hover:text-primary-light font-medium">
                 Request Access

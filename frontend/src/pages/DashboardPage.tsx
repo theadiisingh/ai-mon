@@ -1,10 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { apiApi } from '../api/apiApi'
+import { metricsApi } from '../api/metricsApi'
 import ApiTable from '../components/dashboard/ApiTable'
 import StatCard from '../components/dashboard/StatCard'
-import { formatPercentage } from '../utils/formatters'
-import { ApiEndpoint } from '../types/api'
+import { formatPercentage, getUptimeStatus } from '../utils/formatters'
 import { useAuth } from '../hooks/useAuth'
 import { Activity, Server, Clock, Zap, Plus, RefreshCw, AlertCircle } from 'lucide-react'
 import { motion, Variants } from 'framer-motion'
@@ -14,20 +14,20 @@ const containerVariants: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05
+      staggerChildren: 0.03
     }
   }
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 4 },
   show: { opacity: 1, y: 0 }
 }
 
 export default function DashboardPage() {
-  const queryClient = useQueryClient()
   const { isAuthenticated, loading: authLoading } = useAuth()
 
+  // Fetch endpoints list for the table
   const { data: apisData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['apis'],
     queryFn: async () => {
@@ -35,34 +35,40 @@ export default function DashboardPage() {
       return response.data
     },
     enabled: isAuthenticated && !authLoading,
-    refetchInterval: 30000,
-    staleTime: 10000,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['apis'] })
-  }
+  // Fetch aggregated metrics from backend - NO calculation in frontend
+  const { data: metricsData } = useQuery({
+    queryKey: ['metrics', 'overview', 'all'],
+    queryFn: async () => {
+      const response = await metricsApi.getMetrics(undefined, 24)
+      return response.data
+    },
+    enabled: isAuthenticated && !authLoading,
+  })
 
-  const apis: ApiEndpoint[] = apisData?.items || []
-
+  const apis = apisData?.items || []
   const totalApis = apis.length
-  const activeApis = apis.filter((api: ApiEndpoint) => api.is_active).length
-  const avgUptime = totalApis > 0
-    ? apis.reduce((sum: number, api: ApiEndpoint) => sum + api.uptime_percentage, 0) / totalApis
-    : 0
-  const avgResponseTime = totalApis > 0
-    ? apis.reduce((sum: number, api: ApiEndpoint) => sum + (api.avg_response_time || 0), 0) / totalApis
-    : 0
+  const activeApis = apis.filter((api) => api.is_active).length
+
+  // Get uptime directly from backend - NO calculation
+  const avgUptime = metricsData?.uptime_percentage ?? 0
+  const avgResponseTime = metricsData?.avg_response_time ?? 0
+
+  // Get uptime status for color using centralized utility
+  const uptimeStatus = getUptimeStatus(avgUptime)
+
+  const handleRefresh = () => {
+    refetch()
+  }
 
   if (authLoading || (isLoading && !apisData)) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="h-7 w-40 bg-surface-700 rounded animate-pulse"></div>
-            <div className="h-4 w-56 bg-surface-800 rounded animate-pulse mt-2"></div>
+            <div className="h-6 w-36 bg-surface-700 rounded animate-pulse"></div>
+            <div className="h-4 w-48 bg-surface-800 rounded animate-pulse mt-2"></div>
           </div>
           <div className="h-9 w-20 bg-surface-700 rounded animate-pulse"></div>
         </div>
@@ -70,18 +76,18 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="card p-4 animate-pulse">
-              <div className="h-3 w-20 bg-surface-700 rounded mb-3"></div>
-              <div className="h-6 w-16 bg-surface-700 rounded"></div>
+              <div className="h-2.5 w-16 bg-surface-700 rounded mb-3"></div>
+              <div className="h-6 w-14 bg-surface-700 rounded"></div>
             </div>
           ))}
         </div>
 
-        <div className="card overflow-hidden h-80">
+        <div className="card overflow-hidden h-72">
           <div className="animate-pulse bg-surface-800 h-full w-full p-4">
-            <div className="h-6 w-32 bg-surface-700 rounded mb-4"></div>
-            <div className="space-y-3">
+            <div className="h-5 w-28 bg-surface-700 rounded mb-4"></div>
+            <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-8 bg-surface-700 rounded w-full"></div>
+                <div key={i} className="h-7 bg-surface-700 rounded w-full"></div>
               ))}
             </div>
           </div>
@@ -95,30 +101,30 @@ export default function DashboardPage() {
     const isAuthError = errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('credentials')
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-content-primary">System Outline</h1>
-            <p className="text-xs text-content-secondary mt-1">Real-time status of all your connected services</p>
+            <h1 className="text-xl font-semibold text-content-primary">System Overview</h1>
+            <p className="text-xs text-content-tertiary mt-1">Real-time status of all connected services</p>
           </div>
         </div>
 
-        <div className="bg-danger/5 border border-danger/20 rounded-lg p-8 text-center max-w-lg mx-auto mt-12">
-          <div className="w-12 h-12 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-6 w-6 text-danger" />
+        <div className="bg-danger/5 border border-danger/10 rounded-lg p-8 text-center max-w-lg mx-auto mt-12">
+          <div className="w-10 h-10 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-5 w-5 text-danger" />
           </div>
-          <h3 className="text-sm font-semibold text-content-primary">
+          <h3 className="text-sm font-medium text-content-primary">
             {isAuthError ? 'Session Expired' : 'Failed to Load Intelligence'}
           </h3>
-          <p className="mt-2 text-xs text-content-secondary">
+          <p className="mt-2 text-xs text-content-tertiary">
             {isAuthError
               ? 'Your session may have expired. Please authenticate again.'
               : errorMessage}
           </p>
-          <div className="mt-6 flex justify-center gap-2">
+          <div className="mt-5 flex justify-center gap-2">
             {isAuthError && (
               <Link to="/login" className="btn btn-primary text-xs">
-                Authenticate
+                Sign In
               </Link>
             )}
             <button onClick={() => refetch()} className="btn btn-secondary text-xs">
@@ -135,13 +141,13 @@ export default function DashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-6"
+      className="space-y-5"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <motion.div variants={itemVariants}>
-          <h1 className="text-xl font-semibold text-content-primary">System Outline</h1>
-          <p className="text-xs text-content-secondary mt-0.5">Real-time status of all your connected services</p>
+          <h1 className="text-xl font-semibold text-content-primary">System Overview</h1>
+          <p className="text-xs text-content-tertiary mt-0.5">Real-time status of all connected services</p>
         </motion.div>
         <motion.div variants={itemVariants} className="flex items-center gap-2">
           <button
@@ -160,7 +166,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - All data from backend API */}
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={itemVariants}>
           <StatCard
@@ -184,7 +190,7 @@ export default function DashboardPage() {
             value={formatPercentage(avgUptime)}
             subtitle="Trailing 24 hours"
             icon={<Clock className="w-4 h-4" />}
-            color={avgUptime >= 99 ? 'success' : avgUptime >= 95 ? 'warning' : 'danger'}
+            color={uptimeStatus}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
@@ -200,8 +206,8 @@ export default function DashboardPage() {
 
       {/* API Table */}
       <motion.div variants={itemVariants}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-content-primary">Monitored Endpoints</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-content-primary">Monitored Endpoints</h2>
         </div>
         <ApiTable apis={apis} />
       </motion.div>

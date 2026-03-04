@@ -21,11 +21,18 @@ export const metricsApi = {
   getLog: (id: number) => api.get<MonitoringLog>(`/monitoring/logs/${id}`),
   
   // Metrics - Backend: /api/metrics/*
-  getMetrics: (endpointId: number, hours?: number) => 
-    api.get<Metrics>('/metrics/overview', { params: { api_endpoint_id: endpointId, hours } }),
+  // Pass endpointId as undefined to get aggregated metrics for all endpoints
+  getMetrics: (endpointId: number | undefined, hours?: number) => 
+    api.get<Metrics>('/metrics/overview', { params: { 
+      ...(endpointId && { api_endpoint_id: endpointId }),
+      hours: hours || 24 
+    }}),
   
-  getUptime: (endpointId: number, days?: number) => 
-    api.get<Uptime>('/metrics/uptime', { params: { api_endpoint_id: endpointId, days } }),
+  getUptime: (endpointId: number | undefined, days?: number) => 
+    api.get<Uptime>('/metrics/uptime', { params: { 
+      ...(endpointId && { api_endpoint_id: endpointId }),
+      days: days || 7
+    }}),
   
   getResponseTimeSeries: (endpointId: number, hours?: number) => 
     api.get<TimeSeriesPoint[]>('/metrics/response-time', { 

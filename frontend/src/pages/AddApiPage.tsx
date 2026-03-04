@@ -62,27 +62,27 @@ export default function AddApiPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.14 }}
       className="max-w-2xl mx-auto"
     >
-      <div className="mb-6">
+      <div className="mb-5">
         <button 
           onClick={() => navigate('/dashboard')} 
-          className="flex items-center text-xs font-medium text-content-secondary hover:text-content-primary transition-colors mb-3"
+          className="flex items-center text-xs font-medium text-content-tertiary hover:text-content-secondary transition-colors mb-3"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" /> 
           Back to Dashboard
         </button>
         <h1 className="text-lg font-semibold text-content-primary">Add New Endpoint</h1>
-        <p className="text-xs text-content-secondary mt-1">Configure a new API endpoint for active monitoring</p>
+        <p className="text-xs text-content-tertiary mt-1">Configure a new API endpoint for active monitoring</p>
       </div>
 
       <div className="card">
-        <div className="px-5 py-4 border-b border-border">
+        <div className="px-4 py-3.5 border-b border-border/30">
           <h2 className="text-sm font-medium text-content-primary">Endpoint Configuration</h2>
-          <p className="text-xs text-content-secondary mt-0.5">Provide the basic details for your API.</p>
+          <p className="text-xs text-content-tertiary mt-0.5">Provide the basic details for your API.</p>
         </div>
         <div className="p-5">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,10 +90,10 @@ export default function AddApiPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-3 bg-danger/10 border border-danger/20 text-danger rounded-md flex items-start gap-2"
+                className="p-2.5 bg-danger/5 border border-danger/10 text-danger text-xs flex items-start gap-2 rounded"
               >
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <div className="text-xs font-medium">{error}</div>
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <div className="font-medium">{error}</div>
               </motion.div>
             )}
 
@@ -120,12 +120,12 @@ export default function AddApiPage() {
                 value={formData.url}
                 onChange={handleChange}
                 required
-                className="input font-mono text-xs"
+                className="input font-mono-nums text-xs"
                 placeholder="https://api.example.com/v1/payments"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="method" className="label">HTTP Method</label>
                 <select
@@ -152,16 +152,16 @@ export default function AddApiPage() {
                   value={formData.expected_status_code}
                   onChange={handleChange}
                   required
-                  className="input"
+                  className="input font-mono-nums"
                   min="100"
                   max="599"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="interval_seconds" className="label">Check Interval (seconds)</label>
+                <label htmlFor="interval_seconds" className="label">Check Interval</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -170,7 +170,7 @@ export default function AddApiPage() {
                     value={formData.interval_seconds}
                     onChange={handleChange}
                     required
-                    className="input pr-10"
+                    className="input pr-9 font-mono-nums"
                     min="10"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -180,7 +180,7 @@ export default function AddApiPage() {
               </div>
 
               <div>
-                <label htmlFor="timeout_seconds" className="label">Timeout (seconds)</label>
+                <label htmlFor="timeout_seconds" className="label">Timeout</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -189,7 +189,7 @@ export default function AddApiPage() {
                     value={formData.timeout_seconds}
                     onChange={handleChange}
                     required
-                    className="input pr-10"
+                    className="input pr-9 font-mono-nums"
                     min="1"
                     max="300"
                   />
@@ -207,14 +207,14 @@ export default function AddApiPage() {
                 name="headers"
                 value={formData.headers}
                 onChange={handleChange}
-                className="input font-mono text-xs leading-relaxed"
+                className="input font-mono-nums text-xs leading-relaxed"
                 rows={3}
                 placeholder='{ "Authorization": "Bearer token" }'
               />
               <p className="mt-1.5 text-[10px] text-content-tertiary">Optional. Enter headers as valid JSON.</p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
+            <div className="flex justify-end gap-2 pt-4 border-t border-border/30 mt-4">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
@@ -230,7 +230,6 @@ export default function AddApiPage() {
                 {isSubmitting ? (
                   <span className="flex items-center">
                     <svg className="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Creating...

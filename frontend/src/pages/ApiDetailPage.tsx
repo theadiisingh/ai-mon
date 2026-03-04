@@ -10,7 +10,7 @@ import UptimeChart from '../components/charts/UptimeChart'
 import LogsTable from '../components/logs/LogsTable'
 import AiInsightPanel from '../components/logs/AiInsightPanel'
 import StatCard from '../components/dashboard/StatCard'
-import { formatPercentage, formatDuration } from '../utils/formatters'
+import { formatPercentage, formatDuration, getUptimeStatus } from '../utils/formatters'
 import { motion, Variants } from 'framer-motion'
 import { Play, Pause, Trash2, Activity, Clock, Server, BarChart3, ChevronRight } from 'lucide-react'
 
@@ -43,20 +43,24 @@ export default function ApiDetailPage() {
   const queryClient = useQueryClient()
   const [analyzing, setAnalyzing] = useState(false)
 
-  const { data: apiData, isLoading: apiLoading } = useQuery<{ data: ApiEndpoint }>({
+  const endpointId = Number(id)
+
+  // Fetch endpoint details
+  const { data: apiData, isLoading: apiLoading } = useQuery({
     queryKey: ['api', id],
     queryFn: async () => {
-      const response = await apiApi.get(Number(id!))
-      return response
+      const response = await apiApi.get(endpointId)
+      return response.data
     },
     enabled: !!id,
   })
 
-  const { data: metricsData, isLoading: metricsLoading } = useQuery<{ data: Metrics }>({
+  // Fetch metrics from backend - NO calculation in frontend
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
     queryKey: ['metrics', id],
     queryFn: async () => {
-      const response = await metricsApi.getMetrics(Number(id!))
-      return response
+      const response = await metricsApi.getMetrics(endpointId, 24)
+      return response.data
     },
     enabled: !!id,
   })
@@ -64,7 +68,7 @@ export default function ApiDetailPage() {
   const { data: logsData } = useQuery({
     queryKey: ['logs', id],
     queryFn: async () => {
-      const response = await metricsApi.getLogs({ api_endpoint_id: Number(id), page_size: 50 })
+      const response = await metricsApi.getLogs({ api_endpoint_id: endpointId, page_size: 50 })
       return response.data.items
     },
     enabled: !!id,
@@ -73,28 +77,28 @@ export default function ApiDetailPage() {
   const { data: insightsData } = useQuery({
     queryKey: ['insights', id],
     queryFn: async () => {
-      const response = await metricsApi.getInsights(Number(id!))
+      const response = await metricsApi.getInsights(endpointId)
       return response.data
     },
     enabled: !!id,
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiApi.delete(Number(id!)),
+    mutationFn: () => apiApi.delete(endpointId),
     onSuccess: () => {
       navigate('/dashboard')
     },
   })
 
   const toggleMutation = useMutation({
-    mutationFn: () => apiApi.toggle(Number(id!)),
+    mutationFn: () => apiApi.toggle(endpointId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api', id] })
     },
   })
 
   const analyzeMutation = useMutation({
-    mutationFn: () => metricsApi.triggerAnalysis(Number(id!)),
+    mutationFn: () => metricsApi.triggerAnalysis(endpointId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['insights', id] })
     },
@@ -136,17 +140,21 @@ export default function ApiDetailPage() {
     )
   }
 
-  const api: ApiEndpoint = apiData.data
-  const metrics: Metrics = metricsData?.data || {
-    total_checks: api.total_checks || 0,
-    successful_checks: api.successful_checks || 0,
-    failed_checks: api.failed_checks || 0,
+  const api: ApiEndpoint = apiData
+  // Get uptime directly from backend - NO calculation
+  const metrics: Metrics = metricsData || {
+    total_checks: 0,
+    successful_checks: 0,
+    failed_checks: 0,
     error_rate: 0,
-    uptime_percentage: api.uptime_percentage || 0,
-    avg_response_time: api.avg_response_time || 0,
+    uptime_percentage: 0,
+    avg_response_time: 0,
     min_response_time: 0,
     max_response_time: 0,
   }
+
+  // Get uptime status using centralized utility
+  const uptimeStatus = getUptimeStatus(metrics.uptime_percentage)
 
   const uptimeData: Uptime | null = metrics ? {
     total_checks: metrics.total_checks,
@@ -209,7 +217,7 @@ export default function ApiDetailPage() {
         </div>
       </motion.div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - All data from backend API */}
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={itemVariants}>
           <StatCard
@@ -224,7 +232,7 @@ export default function ApiDetailPage() {
             title="System Uptime"
             value={formatPercentage(metrics.uptime_percentage)}
             subtitle="Trailing 24 hours"
-            color={metrics.uptime_percentage >= 99 ? 'success' : metrics.uptime_percentage >= 95 ? 'warning' : 'danger'}
+            color={uptimeStatus}
             icon={<Server className="w-4 h-4" />}
           />
         </motion.div>
