@@ -49,6 +49,28 @@ class Settings(BaseSettings):
     max_retries: int = 3
     request_timeout_seconds: int = 30
 
+    # Rate Limiting
+    rate_limit_login_attempts: int = 5  # Login attempts per minute
+    rate_limit_login_window: int = 60  # Window in seconds
+
+    # Endpoint Limits
+    max_endpoints_per_user: int = 100  # Maximum endpoints per user
+    min_interval_seconds: int = 60  # Minimum monitoring interval
+    max_interval_seconds: int = 3600  # Maximum monitoring interval
+    max_timeout_seconds: int = 30  # Maximum timeout for health checks
+
+    # AI Limits
+    max_ai_insights_per_day: int = 10  # Max AI insights per user per day
+
+    # Log Retention
+    log_retention_days: int = 30  # Days to keep monitoring logs
+
+    # Response Body Limits
+    max_response_body_length: int = 10000  # Max characters to store
+
+    # Health Check Concurrency
+    max_concurrent_checks: int = 100  # Maximum concurrent health checks
+
     # Email
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
@@ -67,6 +89,13 @@ class Settings(BaseSettings):
             return self.environment.lower() in ("development", "dev")
         # Default: development if debug is True, production otherwise
         return self.debug
+
+    @property
+    def is_production(self) -> bool:
+        """Determine if the application is running in production mode."""
+        if self.environment:
+            return self.environment.lower() in ("production", "prod")
+        return not self.debug
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -94,14 +123,22 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def validate_production_settings(self):
         """Validate production settings."""
-        if not self.debug:
-            # In production, warn about default secret key
+        # In production, warn about default secret key
+        if self.is_production:
+            import warnings
+            
             if self.secret_key == "your-secret-key-change-in-production":
-                import warnings
                 warnings.warn(
                     "WARNING: Using default secret_key in production! "
                     "Set SECRET_KEY environment variable for security."
                 )
+            
+            if self.debug:
+                warnings.warn(
+                    "WARNING: Debug mode is enabled in production! "
+                    "Set debug=False or ENVIRONMENT=production for security."
+                )
+        
         return self
 
 

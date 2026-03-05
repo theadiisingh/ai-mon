@@ -29,6 +29,8 @@ class ApiEndpoint(Base):
         Index('ix_api_endpoints_user_id_is_active', 'user_id', 'is_active'),
         # Composite index for monitoring queries
         Index('ix_api_endpoints_is_active_paused', 'is_active', 'is_paused'),
+        # Additional index for user status queries (scalability)
+        Index('ix_api_endpoints_user_status', 'user_id', 'status'),
     )
     
     id = Column(Integer, primary_key=True, index=True)

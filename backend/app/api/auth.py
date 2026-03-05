@@ -4,6 +4,9 @@ Authentication API routes.
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.dependencies import get_db, get_current_active_user
 from app.core.config import settings
@@ -14,6 +17,9 @@ from app.services.email_service import EmailService
 from loguru import logger
 
 router = APIRouter()
+
+# Rate limiter for login endpoint
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -69,11 +75,13 @@ async def register(
 
 
 @router.post("/login")
+@limiter.limit(f"{settings.rate_limit_login_attempts}/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    """Login and get access token."""
+    """Login and get access token. Rate limited to prevent brute force attacks."""
     auth_service = AuthService(db)
     
     # Create login request from form data

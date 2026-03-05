@@ -23,6 +23,18 @@ from app.core.websocket import get_websocket_manager
 # Global HTTP client for monitoring (singleton)
 _global_http_client: Optional[httpx.AsyncClient] = None
 
+# Semaphore for limiting concurrent health checks (scalability fix)
+_concurrent_check_semaphore: Optional[asyncio.Semaphore] = None
+
+
+async def get_concurrent_check_semaphore() -> asyncio.Semaphore:
+    """Get or create the semaphore for concurrent health checks."""
+    global _concurrent_check_semaphore
+    if _concurrent_check_semaphore is None:
+        _concurrent_check_semaphore = asyncio.Semaphore(settings.max_concurrent_checks)
+        logger.info(f"Health check semaphore initialized with limit: {settings.max_concurrent_checks}")
+    return _concurrent_check_semaphore
+
 
 async def get_global_http_client() -> httpx.AsyncClient:
     """Get or create the global HTTP client with connection pooling."""
@@ -239,26 +251,14 @@ class HealthChecker:
             
             return log, False
     
-    async def check_all_active_endpoints(self) -> Dict[str, Any]:
-        """Check all active API endpoints with error isolation."""
-        from app.services.user_service import UserService
-        from app.services.email_service import EmailService
-        
-        endpoints = await self.api_service.get_active_endpoints()
-        
-        results = {
-            "total": len(endpoints),
-            "successful": 0,
-            "failed": 0,
-            "errors": []
-        }
-        
-        previous_status = {}
-        
-        # Get WebSocket manager for broadcasting
-        ws_manager = get_websocket_manager()
-        
-        for endpoint in endpoints:
+    async def _check_endpoint_with_semaphore(
+        self, 
+        endpoint: ApiEndpoint,
+        semaphore: asyncio.Semaphore,
+        ws_manager
+    ) -> Tuple[Optional[Dict], Optional[Exception]]:
+        """Check a single endpoint with semaphore limiting."""
+        async with semaphore:
             try:
                 log, should_trigger_ai = await self.check_endpoint(endpoint)
                 
@@ -285,64 +285,123 @@ class HealthChecker:
                 except Exception as ws_err:
                     logger.warning(f"WebSocket broadcast failed: {ws_err}")
                 
-                if log.status == CheckStatus.SUCCESS:
-                    results["successful"] += 1
-                    prev_status = previous_status.get(endpoint.id)
-                    if prev_status and prev_status != CheckStatus.SUCCESS:
-                        try:
-                            user_service = UserService(self.db)
-                            user = await user_service.get_user_by_id(endpoint.user_id)
-                            if user:
-                                email_service = EmailService()
-                                await email_service.send_api_recovered_notification(
-                                    to_email=user.email,
-                                    api_name=endpoint.name,
-                                    api_url=endpoint.url,
-                                    downtime_minutes=5
-                                )
-                        except Exception as e:
-                            logger.warning(f"Recovery email failed: {e}")
-                else:
-                    results["failed"] += 1
-                    try:
-                        failed_count = await self.monitoring_service.get_failed_checks_count(
-                            api_endpoint_id=endpoint.id,
-                            minutes=10
-                        )
-                        if failed_count >= 3:
-                            user_service = UserService(self.db)
-                            user = await user_service.get_user_by_id(endpoint.user_id)
-                            if user:
-                                email_service = EmailService()
-                                await email_service.send_api_down_notification(
-                                    to_email=user.email,
-                                    api_name=endpoint.name,
-                                    api_url=endpoint.url,
-                                    error_message=log.error_message or "Multiple failures",
-                                    failure_count=failed_count
-                                )
-                    except Exception as e:
-                        logger.warning(f"Down notification failed: {e}")
+                return {
+                    "endpoint_id": endpoint.id,
+                    "status": log.status,
+                    "should_trigger_ai": should_trigger_ai
+                }, None
                 
-                previous_status[endpoint.id] = log.status
-                
-                if should_trigger_ai:
-                    try:
-                        await self.ai_service.check_and_trigger_analysis(
-                            api_endpoint_id=endpoint.id,
-                            user_id=endpoint.user_id
-                        )
-                    except Exception as e:
-                        logger.warning(f"AI analysis trigger failed: {e}")
-            
             except Exception as e:
+                logger.error(f"Failed endpoint check {endpoint.id}: {e}")
+                return None, e
+    
+    async def check_all_active_endpoints(self) -> Dict[str, Any]:
+        """Check all active API endpoints with error isolation and concurrency limiting."""
+        from app.services.user_service import UserService
+        from app.services.email_service import EmailService
+        
+        endpoints = await self.api_service.get_active_endpoints()
+        
+        results = {
+            "total": len(endpoints),
+            "successful": 0,
+            "failed": 0,
+            "errors": []
+        }
+        
+        previous_status = {}
+        
+        # Get WebSocket manager for broadcasting
+        ws_manager = get_websocket_manager()
+        
+        # Get semaphore for concurrency limiting
+        semaphore = await get_concurrent_check_semaphore()
+        
+        # Create tasks for all endpoints
+        tasks = [
+            self._check_endpoint_with_semaphore(endpoint, semaphore, ws_manager)
+            for endpoint in endpoints
+        ]
+        
+        # Execute all tasks concurrently with semaphore limiting
+        task_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for idx, result in enumerate(task_results):
+            endpoint = endpoints[idx]
+            
+            if isinstance(result, Exception):
                 results["failed"] += 1
                 results["errors"].append({
                     "endpoint_id": endpoint.id,
                     "endpoint_name": endpoint.name,
-                    "error": str(e)
+                    "error": str(result)
                 })
-                logger.error(f"Failed endpoint check {endpoint.id}: {e}")
+                continue
+            
+            check_result, error = result
+            
+            if error:
+                results["failed"] += 1
+                results["errors"].append({
+                    "endpoint_id": endpoint.id,
+                    "endpoint_name": endpoint.name,
+                    "error": str(error)
+                })
+                continue
+            
+            # Process successful check
+            log_status = check_result["status"]
+            should_trigger_ai = check_result["should_trigger_ai"]
+            
+            if log_status == CheckStatus.SUCCESS:
+                results["successful"] += 1
+                prev_status = previous_status.get(endpoint.id)
+                if prev_status and prev_status != CheckStatus.SUCCESS:
+                    try:
+                        user_service = UserService(self.db)
+                        user = await user_service.get_user_by_id(endpoint.user_id)
+                        if user:
+                            email_service = EmailService()
+                            await email_service.send_api_recovered_notification(
+                                to_email=user.email,
+                                api_name=endpoint.name,
+                                api_url=endpoint.url,
+                                downtime_minutes=5
+                            )
+                    except Exception as e:
+                        logger.warning(f"Recovery email failed: {e}")
+            else:
+                results["failed"] += 1
+                try:
+                    failed_count = await self.monitoring_service.get_failed_checks_count(
+                        api_endpoint_id=endpoint.id,
+                        minutes=10
+                    )
+                    if failed_count >= 3:
+                        user_service = UserService(self.db)
+                        user = await user_service.get_user_by_id(endpoint.user_id)
+                        if user:
+                            email_service = EmailService()
+                            await email_service.send_api_down_notification(
+                                to_email=user.email,
+                                api_name=endpoint.name,
+                                api_url=endpoint.url,
+                                error_message="Multiple failures",
+                                failure_count=failed_count
+                            )
+                except Exception as e:
+                    logger.warning(f"Down notification failed: {e}")
+            
+            previous_status[endpoint.id] = log_status
+            
+            if should_trigger_ai:
+                try:
+                    await self.ai_service.check_and_trigger_analysis(
+                        api_endpoint_id=endpoint.id,
+                        user_id=endpoint.user_id
+                    )
+                except Exception as e:
+                    logger.warning(f"AI analysis trigger failed: {e}")
         
         return results
 

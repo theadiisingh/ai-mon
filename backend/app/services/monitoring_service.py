@@ -2,13 +2,14 @@
 Monitoring service for managing monitoring logs and checks.
 """
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.monitoring_log import MonitoringLog, CheckStatus
 from app.models.api import ApiEndpoint
 from app.schemas.monitoring_schema import MonitoringLogCreate, CheckSummary
+from app.core.config import settings
 
 
 class MonitoringService:
@@ -19,13 +20,18 @@ class MonitoringService:
     
     async def create_log(self, log_data: MonitoringLogCreate) -> MonitoringLog:
         """Create a new monitoring log entry."""
+        # Truncate response body to prevent storage bloat (security & cost fix)
+        error_message = log_data.error_message
+        if error_message and len(error_message) > settings.max_response_body_length:
+            error_message = error_message[:settings.max_response_body_length] + "... [truncated]"
+        
         db_log = MonitoringLog(
             api_endpoint_id=log_data.api_endpoint_id,
             user_id=log_data.user_id,
             status=log_data.status,
             status_code=log_data.status_code,
             response_time=log_data.response_time,
-            error_message=log_data.error_message,
+            error_message=error_message,
             is_anomaly=log_data.is_anomaly,
             anomaly_score=log_data.anomaly_score,
             request_method=log_data.request_method,
@@ -48,6 +54,25 @@ class MonitoringService:
         )
         
         return db_log
+    
+    async def cleanup_old_logs(self, days: int = None) -> int:
+        """Clean up logs older than specified days (log retention policy)."""
+        retention_days = days if days is not None else settings.log_retention_days
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        
+        # Use bulk delete for efficiency
+        from sqlalchemy import delete
+        result = await self.db.execute(
+            delete(MonitoringLog).where(MonitoringLog.checked_at < cutoff_time)
+        )
+        await self.db.flush()
+        
+        deleted_count = result.rowcount
+        if deleted_count > 0:
+            from loguru import logger
+            logger.info(f"Cleaned up {deleted_count} monitoring logs older than {retention_days} days")
+        
+        return deleted_count
     
     async def get_log_by_id(
         self, 

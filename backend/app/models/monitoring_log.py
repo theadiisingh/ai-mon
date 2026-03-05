@@ -22,11 +22,15 @@ class MonitoringLog(Base):
     
     __tablename__ = "monitoring_logs"
     __table_args__ = (
-        # Composite indexes for common queries
+        # Composite indexes for common queries (performance optimization)
         Index('ix_monitoring_logs_endpoint_checked', 'api_endpoint_id', 'checked_at'),
         Index('ix_monitoring_logs_user_endpoint', 'user_id', 'api_endpoint_id'),
         Index('ix_monitoring_logs_status_checked', 'status', 'checked_at'),
         Index('ix_monitoring_logs_is_anomaly', 'is_anomaly', 'checked_at'),
+        # Additional indexes for scalability
+        Index('ix_monitoring_logs_user_status', 'user_id', 'status'),
+        Index('ix_monitoring_logs_user_created', 'user_id', 'checked_at'),
+        Index('ix_monitoring_logs_dashboard', 'api_endpoint_id', 'checked_at'),
     )
     
     id = Column(Integer, primary_key=True, index=True)

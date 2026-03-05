@@ -3,6 +3,7 @@ API Endpoint service for managing monitored APIs with optimized queries.
 """
 from typing import Optional, List
 import json
+from fastapi import HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.models.api import ApiEndpoint, HttpMethod
 from app.models.monitoring_log import MonitoringLog, CheckStatus
 from app.schemas.api_schema import ApiEndpointCreate, ApiEndpointUpdate, ApiEndpointStats
+from app.core.config import settings
 
 
 class ApiService:
@@ -17,6 +19,16 @@ class ApiService:
     
     def __init__(self, db: AsyncSession):
         self.db = db
+    
+    async def _check_endpoint_quota(self, user_id: int) -> None:
+        """Check if user has reached their endpoint quota."""
+        count = await self.count_endpoints(user_id)
+        if count >= settings.max_endpoints_per_user:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Maximum number of endpoints ({settings.max_endpoints_per_user}) reached. "
+                       f"Delete existing endpoints to add more."
+            )
     
     async def get_endpoint_by_id(
         self, 
@@ -43,6 +55,9 @@ class ApiService:
         user_id: int
     ) -> ApiEndpoint:
         """Create a new API endpoint."""
+        # Check endpoint quota before creating
+        await self._check_endpoint_quota(user_id)
+        
         headers_json = json.dumps(endpoint_data.headers) if endpoint_data.headers else None
         body_json = json.dumps(endpoint_data.body) if endpoint_data.body else None
         
