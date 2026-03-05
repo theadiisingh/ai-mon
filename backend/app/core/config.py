@@ -70,11 +70,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
-        """Parse CORS origins from comma-separated string."""
+        """Parse CORS origins from comma-separated string and return unique list."""
         # Parse explicitly configured origins
         origins = [origin.strip() for origin in self.cors_origins.split(",")]
         
-        # Add explicit localhost origins for development
+        # Add explicit localhost origins for development (avoid duplicates using set)
         # These work with allow_credentials=True
         explicit_origins = [
             "http://localhost:3000",
@@ -85,12 +85,11 @@ class Settings(BaseSettings):
             "http://127.0.0.1:8000",
         ]
         
-        # Add any origins not already in the list
-        for origin in explicit_origins:
-            if origin not in origins:
-                origins.append(origin)
+        # Combine all origins and use set to remove duplicates, then convert back to list
+        all_origins = origins + explicit_origins
+        unique_origins = list(set(all_origins))
         
-        return origins
+        return unique_origins
 
     @model_validator(mode='after')
     def validate_production_settings(self):

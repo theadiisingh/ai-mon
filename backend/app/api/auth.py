@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_active_user
 from app.core.config import settings
 from app.schemas.auth_schema import LoginRequest
 from app.schemas.user_schema import UserCreate, UserResponse
@@ -13,67 +13,7 @@ from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 from loguru import logger
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
 router = APIRouter()
-
-
-async def get_current_active_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get current authenticated user."""
-    from app.core.security import decode_token
-    from app.services.user_service import UserService
-    
-    logger.info(f"[AUTH] get_current_active_user called with token: {token[:50] if token else 'None'}...")
-    
-    # Decode token
-    payload = decode_token(token)
-    
-    if not payload:
-        logger.warning("[AUTH] Failed to decode token in auth.py")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    logger.info(f"[AUTH] Token payload: {payload}")
-    
-    # Get user ID from payload
-    user_id = payload.get("sub")
-    
-    if not user_id:
-        logger.warning("[AUTH] No user_id in token payload")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    logger.info(f"[AUTH] Looking up user_id: {user_id}")
-    
-    # Get user from database
-    user_service = UserService(db)
-    user = await user_service.get_user_by_id(int(user_id))
-    
-    if not user:
-        logger.warning(f"[AUTH] User not found for user_id: {user_id}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
-    
-    if not user.is_active:
-        logger.warning(f"[AUTH] User {user_id} is inactive")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
-        )
-    
-    logger.info(f"[AUTH] User authenticated: {user.id} - {user.email}")
-    return user
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
