@@ -91,14 +91,19 @@ class CSPMiddleware(BaseHTTPMiddleware):
                 "upgrade-insecure-requests"
             )
         else:
-            # Production CSP - strict security
+            # Production CSP - strict security with Vercel support
+            # Get Vercel URL if available
+            vercel_origin = ""
+            if settings.vercel_url:
+                vercel_origin = f"https://{settings.vercel_url} "
+            
             return (
-                "default-src 'self' "
+                f"default-src 'self' {vercel_origin}"
                 "script-src 'self' "
                 "style-src 'self' 'unsafe-inline' "
                 "img-src 'self' data: blob: "
                 "font-src 'self' data: "
-                "connect-src 'self' "
+                f"connect-src 'self' {vercel_origin}"
                 "frame-src 'self' "
                 "worker-src 'self' blob: "
                 "upgrade-insecure-requests"

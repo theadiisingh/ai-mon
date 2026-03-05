@@ -115,6 +115,15 @@ async def debug_token(
     db: AsyncSession = Depends(get_db)
 ):
     """Debug endpoint to inspect token validation - FOR DEVELOPMENT ONLY."""
+    # Only allow in development mode
+    from app.core.config import settings
+    if settings.is_production:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Not Found"}
+        )
+    
     from app.core.security import decode_token
     from app.services.user_service import UserService
     

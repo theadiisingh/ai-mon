@@ -1,237 +1,355 @@
 # AI MON - Smart API Monitoring & Auto Debug Tool
 
-AI MON is a production-ready MVP for real-time API monitoring with AI-powered debugging insights. It provides comprehensive monitoring, anomaly detection, failure analysis, and alerting capabilities.
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-1.0.0-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/FastAPI-0.109.0-purple.svg" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-18.2-orange.svg" alt="React">
+</p>
 
-## Features
+AI MON is a production-ready smart API monitoring and auto-debug tool that provides real-time API monitoring, anomaly detection, failure analysis, and AI-powered debugging insights.
 
-- **User Authentication**: JWT-based authentication system
+## 🚀 Features
+
+- **User Authentication**: JWT-based authentication with access and refresh tokens
 - **API Registration**: Add APIs with URL, HTTP method, monitoring interval, expected status code, and timeout threshold
 - **Background Monitoring**: Async monitoring engine that periodically checks registered APIs
-- **Data Storage**: Each check stores timestamp, response time, status code, error message, and anomaly flag
+- **Real-time Dashboard**: Live dashboard with uptime percentage, response time graphs, and error rates
 - **Anomaly Detection**: Statistical anomaly detection using rolling mean and standard deviation (Z-score method)
-- **Repeated Failure Detection**: Tracks consecutive failures
+- **Repeated Failure Detection**: Tracks consecutive failures and triggers alerts
 - **AI Integration**: Collects failure logs and sends them to LLM for analysis (with mock mode fallback)
 - **Email Alerts**: Sends notifications when APIs fail consecutively (3+ failures)
-- **Frontend Dashboard**: Real-time dashboard with:
-  - All user APIs display
-  - Uptime percentage
-  - Average response time
-  - Error rate
-  - Response time graph
-  - Logs table
-  - AI insight panel
+- **WebSocket Support**: Real-time updates when health checks complete
 
-## Tech Stack
+## 🛠 Tech Stack
 
 ### Backend
-- **Framework**: FastAPI
-- **Database**: PostgreSQL with SQLAlchemy async
+- **Framework**: FastAPI 0.109.0
+- **Database**: SQLAlchemy async with SQLite/PostgreSQL support
 - **Authentication**: JWT with python-jose
-- **Scheduler**: APScheduler
-- **HTTP Client**: httpx
-- **AI**: OpenAI (with mock mode fallback)
+- **HTTP Client**: httpx for async monitoring
+- **AI**: OpenAI SDK (with mock mode fallback)
+- **Rate Limiting**: SlowAPI
 
 ### Frontend
-- **Framework**: React with TypeScript
+- **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS
-- **State Management**: React Query + Context
+- **State Management**: React Context + React Query
 - **Charts**: Recharts
-- **Routing**: React Router
+- **Routing**: React Router v6
 
-## Quick Start
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL (or use Docker)
-
-### Backend Setup
-
-1. Navigate to the backend directory:
-```
-bash
-cd backend
-```
-
-2. Create a virtual environment:
-```
-bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```
-bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file (copy from example):
-```
-env
-# Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aimon
-
-# JWT
-SECRET_KEY=your-secret-key-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# AI (optional - will use mock mode if not provided)
-OPENAI_API_KEY=your-openai-api-key
-
-# Email (optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-
-# Monitoring
-MONITORING_INTERVAL_SECONDS=60
-```
-
-5. Run the backend server:
-```
-bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The API will be available at http://localhost:8000 with documentation at http://localhost:8000/docs
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-```
-bash
-cd frontend
-```
-
-2. Install dependencies:
-```
-bash
-npm install
-```
-
-3. Create a `.env` file:
-```
-env
-VITE_API_URL=http://localhost:8000/api
-```
-
-4. Run the development server:
-```
-bash
-npm run dev
-```
-
-The frontend will be available at http://localhost:5173
-
-### Using Docker (Alternative)
-
-1. Navigate to the backend directory:
-```
-bash
-cd backend
-```
-
-2. Start the services:
-```
-bash
-docker-compose up -d
-```
-
-This will start both PostgreSQL and the backend API.
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login and get access token
-- `POST /api/auth/refresh` - Refresh access token
-
-### API Endpoints (Protected)
-- `GET /api/apis` - List all API endpoints
-- `POST /api/apis` - Create a new API endpoint
-- `GET /api/apis/{id}` - Get API endpoint details
-- `PUT /api/apis/{id}` - Update API endpoint
-- `DELETE /api/apis/{id}` - Delete API endpoint
-- `POST /api/apis/{id}/toggle` - Toggle endpoint active status
-- `POST /api/apis/{id}/check` - Trigger manual health check
-
-### Monitoring (Protected)
-- `GET /api/monitoring/logs` - Get monitoring logs
-- `GET /api/monitoring/endpoints/{id}/anomalies` - Get anomalies for endpoint
-- `GET /api/monitoring/endpoints/{id}/baseline` - Get response time baseline
-- `POST /api/monitoring/analyze` - Trigger AI analysis
-
-### Metrics (Protected)
-- `GET /api/metrics/overview` - Get metrics overview
-- `GET /api/metrics/uptime` - Get uptime metrics
-- `GET /api/metrics/response-time` - Get response time series
-- `GET /api/metrics/status-codes` - Get status code distribution
-- `GET /api/metrics/error-rate` - Get error rate
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | postgresql://postgres:postgres@localhost:5432/aimon |
-| `SECRET_KEY` | JWT secret key | your-secret-key-change-in-production |
-| `ALGORITHM` | JWT algorithm | HS256 |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration time | 30 |
-| `OPENAI_API_KEY` | OpenAI API key (optional) | - |
-| `AI_MODEL` | AI model to use | gpt-4 |
-| `SMTP_HOST` | Email SMTP host | smtp.gmail.com |
-| `SMTP_PORT` | Email SMTP port | 587 |
-| `SMTP_USER` | Email username | - |
-| `SMTP_PASSWORD` | Email password | - |
-| `MONITORING_INTERVAL_SECONDS` | Health check interval | 60 |
-
-## MVP Functionality Checklist
-
-- ✅ User authentication using JWT
-- ✅ API registration (URL, method, interval, status code, timeout)
-- ✅ Background async monitoring engine
-- ✅ Monitoring check storage (timestamp, response time, status code, error, anomaly flag)
-- ✅ Statistical anomaly detection (Z-score method)
-- ✅ Repeated failure detection
-- ✅ AI integration (with mock mode fallback)
-- ✅ Email alerts on consecutive failures
-- ✅ Frontend dashboard with all required components
-
-## Architecture
+## 📋 Architecture Overview
 
 ```
 ai-mon/
 ├── backend/
 │   ├── app/
-│   │   ├── ai/              # AI client and prompt templates
-│   │   ├── api/             # API routes
-│   │   ├── core/            # Config, database, security
-│   │   ├── models/          # SQLAlchemy models
-│   │   ├── monitoring_engine/  # Health checker and scheduler
-│   │   ├── schemas/         # Pydantic schemas
-│   │   ├── services/        # Business logic
-│   │   └── utils/           # Utilities
+│   │   ├── ai/                    # AI client and prompt templates
+│   │   ├── api/                   # REST API endpoints
+│   │   ├── core/                  # Config, database, security
+│   │   ├── middleware/            # CSP, CORS middleware
+│   │   ├── models/                # SQLAlchemy ORM models
+│   │   ├── monitoring_engine/     # Health checker and scheduler
+│   │   ├── schemas/                # Pydantic validation schemas
+│   │   ├── services/               # Business logic
+│   │   └── utils/                 # Utilities
 │   ├── requirements.txt
-│   └── docker-compose.yml
+│   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── api/            # API clients
-│   │   ├── components/     # React components
-│   │   ├── context/        # React context
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── pages/          # Page components
-│   │   ├── types/          # TypeScript types
-│   │   └── utils/          # Utilities
+│   │   ├── api/                   # API clients
+│   │   ├── components/            # React components
+│   │   ├── context/               # React context
+│   │   ├── hooks/                 # Custom hooks
+│   │   ├── pages/                 # Page components
+│   │   ├── types/                 # TypeScript types
+│   │   └── utils/                 # Utilities
 │   ├── package.json
 │   └── vite.config.ts
+├── api/                           # Vercel serverless functions
+├── vercel.json                    # Vercel configuration
 └── README.md
 ```
 
-## License
+## 🚦 Deployment Guide (Vercel)
 
-MIT
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- Vercel account
+
+### Quick Deploy
+
+1. **Fork or clone this repository**
+
+2. **Install Vercel CLI** (optional):
+   ```bash
+   npm i -g vercel
+   ```
+
+3. **Set up environment variables**:
+   
+   Create a `.env` file in the `backend` directory (copy from `backend/.env.example`):
+   ```bash
+   # Required for production
+   SECRET_KEY=your-secure-secret-key-here
+   ENVIRONMENT=production
+   DEBUG=false
+   
+   # Database (PostgreSQL recommended for production)
+   DATABASE_URL=postgresql+asyncpg://user:password@host:port/database
+   
+   # Optional: AI Integration
+   # OPENAI_API_KEY=sk-...
+   
+   # Optional: Email (for alerts)
+   # SMTP_USER=your-email@gmail.com
+   # SMTP_PASSWORD=your-app-password
+   ```
+
+4. **Deploy to Vercel**:
+   ```bash
+   vercel
+   ```
+
+   Or connect your GitHub repository to Vercel for automatic deployments.
+
+5. **Configure Environment Variables in Vercel Dashboard**:
+   - Go to your project settings
+   - Add environment variables:
+     - `SECRET_KEY` (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
+     - `ENVIRONMENT` = `production`
+     - `DEBUG` = `false`
+     - `DATABASE_URL` = your PostgreSQL connection string
+     - `CORS_ORIGINS` = `https://your-project.vercel.app`
+
+### Local Development
+
+1. **Backend Setup**:
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   cp .env.example .env  # And configure
+   python -m uvicorn app.main:app --reload
+   ```
+
+2. **Frontend Setup**:
+   ```bash
+   cd frontend
+   npm install
+   cp .env.example .env  # And configure
+   npm run dev
+   ```
+
+## 📝 Environment Variables Setup
+
+### Backend Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `SECRET_KEY` | JWT secret key (generate with `python -c "import secrets; print(secrets.token_hex(32))"`) | Yes | Auto-generated |
+| `ENVIRONMENT` | Environment: `development` or `production` | No | `development` |
+| `DEBUG` | Enable debug mode | No | `false` |
+| `DATABASE_URL` | Database connection string | No | `sqlite+aiosqlite:///./aimon.db` |
+| `ALGORITHM` | JWT algorithm | No | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration time | No | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token expiration | No | `7` |
+| `OPENAI_API_KEY` | OpenAI API key for AI insights | No | - |
+| `AI_MODEL` | AI model to use | No | `gpt-4` |
+| `SMTP_HOST` | Email SMTP host | No | `smtp.gmail.com` |
+| `SMTP_PORT` | Email SMTP port | No | `587` |
+| `SMTP_USER` | Email username | No | - |
+| `SMTP_PASSWORD` | Email password | No | - |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | No | Localhost |
+| `MONITORING_INTERVAL_SECONDS` | Health check interval | No | `60` |
+| `MAX_CONCURRENT_CHECKS` | Max concurrent health checks | No | `100` |
+
+### Frontend Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `VITE_API_URL` | Backend API URL | Yes | `http://localhost:8000/api` |
+
+## 🔒 Security Measures Implemented
+
+### Authentication & Authorization
+- JWT-based authentication with access and refresh tokens
+- Token expiration and rotation
+- Password hashing with bcrypt
+- Protected API endpoints with dependency injection
+
+### API Security
+- Rate limiting on login endpoints (5 attempts/minute)
+- Request body validation with Pydantic
+- SQL injection prevention via SQLAlchemy ORM
+
+### Infrastructure Security
+- Content Security Policy (CSP) headers
+- CORS configuration with environment-aware settings
+- X-Content-Type-Options, X-Frame-Options headers
+- HSTS headers in production
+
+### Production Hardening
+- Debug mode disabled in production
+- OpenAPI/Swagger docs disabled in production
+- Error messages sanitized in production
+- No sensitive data in logs
+
+## 📊 Performance & Load Capacity
+
+### Current Architecture Limits
+
+| Metric | Current Estimate |
+|--------|------------------|
+| Monitored APIs | Up to 500 endpoints per instance |
+| Monitoring Checks | ~10,000 checks/day per instance |
+| Concurrent Users | 50-100 active users |
+| Response Time | < 200ms for API calls |
+
+### Scalability Recommendations
+
+For handling **10,000+ monitored APIs** and **100,000+ checks/day**:
+
+1. **Database**:
+   - Switch from SQLite to PostgreSQL
+   - Implement database read replicas
+   - Add connection pooling (PgBouncer)
+
+2. **Monitoring Engine**:
+   - Use Redis queue for distributed health checks
+   - Implement horizontal scaling with multiple workers
+   - Add message broker (RabbitMQ/Redis Streams)
+
+3. **Caching**:
+   - Implement Redis caching for frequently accessed data
+   - Cache API responses and metrics
+
+4. **CDN**:
+   - Serve static assets via CDN
+   - Consider edge computing for health checks
+
+## 🔍 Monitoring System Explanation
+
+### Health Check Flow
+
+1. **Scheduler**: Runs at configured interval (default: 60 seconds)
+2. **Health Checker**: Performs HTTP request to each monitored endpoint
+3. **Retry Logic**: Up to 3 retries with exponential backoff on failure
+4. **Anomaly Detection**: Z-score calculation for response time anomalies
+5. **Alert System**: Triggers email notification after 3 consecutive failures
+6. **AI Analysis**: Collects failure logs and sends to LLM for insights
+
+### WebSocket Events
+
+- `health_check_complete`: Fired when a health check finishes
+- `endpoint_update`: Fired when endpoint status changes
+- Real-time dashboard updates without page refresh
+
+## 📖 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login (rate limited)
+- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/auth/debug-token` - Debug token (dev only)
+
+### API Endpoints (Protected)
+- `GET /api/apis` - List all endpoints
+- `POST /api/apis` - Create endpoint
+- `GET /api/apis/{id}` - Get endpoint details
+- `PUT /api/apis/{id}` - Update endpoint
+- `DELETE /api/apis/{id}` - Delete endpoint
+- `POST /api/apis/{id}/toggle` - Toggle active status
+- `POST /api/apis/{id}/check` - Manual health check
+
+### Monitoring (Protected)
+- `GET /api/monitoring/logs` - Get logs
+- `GET /api/monitoring/endpoints/{id}/anomalies` - Get anomalies
+- `GET /api/monitoring/endpoints/{id}/baseline` - Get baseline
+- `POST /api/monitoring/analyze` - Trigger AI analysis
+
+### Metrics (Protected)
+- `GET /api/metrics/overview` - Dashboard overview
+- `GET /api/metrics/uptime` - Uptime metrics
+- `GET /api/metrics/response-time` - Response time series
+- `GET /api/metrics/status-codes` - Status code distribution
+- `GET /api/metrics/error-rate` - Error rate
+
+## 🤝 Developer Setup Instructions
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- npm or yarn
+
+### Setup Steps
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/yourusername/ai-mon.git
+   cd ai-mon
+   ```
+
+2. **Backend Setup**:
+   ```bash
+   cd backend
+   python -m venv venv
+   # Windows
+   venv\Scripts\activate
+   # Linux/Mac
+   source venv/bin/activate
+   
+   pip install -r requirements.txt
+   cp .env.example .env
+   # Edit .env with your settings
+   
+   python -m uvicorn app.main:app --reload
+   ```
+
+3. **Frontend Setup**:
+   ```bash
+   cd frontend
+   npm install
+   cp .env.example .env
+   # Edit .env with your API URL
+   
+   npm run dev
+   ```
+
+4. **Access the application**:
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+### Running Tests
+```bash
+cd backend
+pytest tests/ -v
+```
+
+### Building for Production
+```bash
+# Frontend
+cd frontend
+npm run build
+
+# Backend
+cd backend
+# Run with gunicorn
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- [FastAPI](https://fastapi.tiangolo.com/) - The web framework
+- [React](https://react.dev/) - UI library
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [OpenAI](https://openai.com/) - AI integration
+

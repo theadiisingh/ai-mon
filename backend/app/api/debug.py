@@ -1,5 +1,6 @@
 """
 Debug routes for troubleshooting authentication issues.
+These endpoints are only available in development mode.
 """
 from fastapi import APIRouter, Request, Depends
 from app.core.dependencies import get_current_user
@@ -8,12 +9,23 @@ from app.models.user import User
 router = APIRouter()
 
 
+def check_dev_mode():
+    """Check if running in development mode."""
+    from app.core.config import settings
+    if settings.is_production:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 @router.get("/debug/me")
 async def debug_current_user(
     request: Request,
     current_user: User = Depends(get_current_user)
 ):
     """Debug endpoint that returns user info if token is valid."""
+    # Check if in development mode
+    check_dev_mode()
+    
     from app.utils.logger import log
     log.info(f"[DEBUG] User authenticated: {current_user.id} - {current_user.email}")
     return {
@@ -27,6 +39,9 @@ async def debug_current_user(
 @router.get("/debug/token-info")
 async def debug_token_info(request: Request):
     """Debug endpoint to see what's being sent."""
+    # Check if in development mode
+    check_dev_mode()
+    
     from app.utils.logger import log
     
     auth_header = request.headers.get("Authorization", "NOT FOUND")

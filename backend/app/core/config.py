@@ -3,6 +3,7 @@ Application configuration module.
 Loads settings from environment variables using pydantic-settings.
 """
 import os
+import secrets
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, model_validator
@@ -12,28 +13,34 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=None,  # Don't load from .env file to avoid validation errors
+        env_file=None,  # Don't load from .env file - use environment variables directly
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",  # Ignore extra fields
     )
 
     # App
     app_name: str = "AI MON"
     app_version: str = "1.0.0"
-    debug: bool = True
+    debug: bool = False  # Default to False for security - override with DEBUG=true for development
     host: str = "0.0.0.0"
     port: int = 8000
 
     # Environment detection
     # Set ENVIRONMENT=production to disable dev features
-    # If not set, defaults to 'development' when debug=True, 'production' otherwise
+    # Set ENVIRONMENT=development to enable dev features
+    # If not set, defaults based on debug setting
     environment: str = ""
+
+    # Vercel deployment detection
+    vercel: bool = False
+    vercel_url: str = ""
 
     # Database - Using SQLite for easier setup
     database_url: str = "sqlite+aiosqlite:///./aimon.db"
 
-    # JWT
-    secret_key: str = "your-secret-key-change-in-production"
+    # JWT - Use stable key for development, override with env var in production
+    secret_key: str = "dev-secret-key-change-in-production-12345678"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -81,6 +88,25 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 
+    def __init__(self, **kwargs):
+        """Initialize settings with Vercel detection."""
+        # Auto-detect Vercel environment
+        if os.environ.get("VERCEL", "").lower() == "true":
+            kwargs["vercel"] = True
+            kwargs["vercel_url"] = os.environ.get("VERCEL_URL", "")
+            # Auto-set production mode on Vercel
+            if not kwargs.get("environment"):
+                kwargs["environment"] = "production"
+            if "debug" not in kwargs:
+                kwargs["debug"] = False
+        
+        super().__init__(**kwargs)
+
+    @property
+    def is_vercel(self) -> bool:
+        """Check if running on Vercel."""
+        return self.vercel or os.environ.get("VERCEL", "").lower() == "true"
+
     @property
     def is_development(self) -> bool:
         """Determine if the application is running in development mode."""
@@ -95,52 +121,70 @@ class Settings(BaseSettings):
         """Determine if the application is running in production mode."""
         if self.environment:
             return self.environment.lower() in ("production", "prod")
+        # Also consider Vercel production
+        if self.is_vercel:
+            return True
         return not self.debug
 
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string and return unique list."""
-        # Parse explicitly configured origins
         origins = [origin.strip() for origin in self.cors_origins.split(",")]
         
-        # Add explicit localhost origins for development (avoid duplicates using set)
-        # These work with allow_credentials=True
-        explicit_origins = [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:8000",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:8000",
-        ]
+        # In development, add localhost origins
+        if self.is_development:
+            explicit_origins = [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:8000",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:8000",
+            ]
+            all_origins = origins + explicit_origins
+        else:
+            # In production, only use explicitly configured origins
+            all_origins = origins
         
-        # Combine all origins and use set to remove duplicates, then convert back to list
-        all_origins = origins + explicit_origins
-        unique_origins = list(set(all_origins))
+        # Also add Vercel URL if available
+        if self.vercel_url:
+            all_origins.append(f"https://{self.vercel_url}")
         
-        return unique_origins
+        return list(set(all_origins))
 
     @model_validator(mode='after')
     def validate_production_settings(self):
         """Validate production settings."""
-        # In production, warn about default secret key
+        # In production, validate critical settings
         if self.is_production:
             import warnings
             
-            if self.secret_key == "your-secret-key-change-in-production":
+            # Check for default/insecure secret key (both old and new patterns)
+            if (self.secret_key == "your-secret-key-change-in-production" or 
+                self.secret_key == "dev-secret-key-change-in-production-12345678" or 
+                len(self.secret_key) < 32):
                 warnings.warn(
-                    "WARNING: Using default secret_key in production! "
-                    "Set SECRET_KEY environment variable for security."
+                    "WARNING: Using insecure secret_key in production! "
+                    "Set a strong SECRET_KEY environment variable (min 32 chars). "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
                 )
             
+            # Warn about debug mode
             if self.debug:
                 warnings.warn(
                     "WARNING: Debug mode is enabled in production! "
-                    "Set debug=False or ENVIRONMENT=production for security."
+                    "Set DEBUG=false or ENVIRONMENT=production for security."
+                )
+            
+            # Warn if using SQLite in production
+            if "sqlite" in self.database_url.lower():
+                warnings.warn(
+                    "WARNING: Using SQLite in production is not recommended. "
+                    "Consider using PostgreSQL for production deployments."
                 )
         
         return self
 
 
-# Simple approach - just use defaults for testing
+# Initialize settings
 settings = Settings()

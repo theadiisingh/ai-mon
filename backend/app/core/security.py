@@ -73,26 +73,21 @@ def create_refresh_token(data: dict) -> str:
 
 def decode_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT token with proper error handling."""
-    log.info(f"[SECURITY] decode_token called with token: {token[:50] if token else 'None'}...")
-    log.info(f"[SECURITY] Using secret_key: {settings.secret_key[:20]}...")
-    log.info(f"[SECURITY] Using algorithm: {settings.algorithm}")
-    
     try:
         payload = jwt.decode(
             token, 
             settings.secret_key, 
             algorithms=[settings.algorithm]
         )
-        log.info(f"[SECURITY] Token decoded successfully. Payload: {payload}")
         return payload
     except ExpiredSignatureError:
         log.warning("[SECURITY] Token has expired")
         return None
     except JWTError as e:
-        log.warning(f"[SECURITY] JWT decode error: {e}")
+        log.warning(f"[SECURITY] JWT decode error: {type(e).__name__}")
         return None
     except Exception as e:
-        log.error(f"[SECURITY] Unexpected error decoding token: {e}")
+        log.error(f"[SECURITY] Unexpected error decoding token: {type(e).__name__}")
         return None
 
 
@@ -206,3 +201,89 @@ def validate_password_strength(password: str) -> bool:
     if not any(c.isdigit() for c in password):
         return False
     return True
+
+
+async def get_current_user_optional(
+    request: Request,
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get current user if authenticated, but require authentication in production.
+    
+    In development mode:
+        - If token is provided, validates and returns the user
+        - If no token is provided, returns None (for dashboard views)
+    
+    In production mode:
+        - Requires valid authentication
+        - Returns 401 if no valid token
+    
+    This allows internal dashboard metrics to work in development without auth,
+    while maintaining security in production.
+    """
+    from app.models.user import User
+    from app.services.user_service import UserService
+    
+    # If no token provided
+    if not token:
+        # In development mode, allow unauthenticated access (return None)
+        # In production mode, require authentication
+        if settings.is_development:
+            log.info("[DEV] No token provided, allowing unauthenticated access in development mode")
+            return None
+        else:
+            # Production requires authentication
+            credentials_exception = HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            raise credentials_exception
+    
+    # Token provided - validate it
+    payload = decode_token(token)
+    if payload is None or payload.get("type") != "access":
+        # Invalid token
+        if settings.is_development:
+            log.info("[DEV] Invalid token provided, but allowing access in development mode")
+            return None
+        else:
+            credentials_exception = HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            raise credentials_exception
+    
+    user_id = payload.get("sub")
+    if user_id is None:
+        if settings.is_development:
+            return None
+        else:
+            credentials_exception = HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            raise credentials_exception
+    
+    from app.services.user_service import UserService
+    user_service = UserService(db)
+    
+    try:
+        user = await user_service.get_user_by_id(int(user_id))
+        if user and user.is_active:
+            return user
+    except ValueError:
+        pass
+    
+    if settings.is_development:
+        return None
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    raise credentials_exception
