@@ -45,8 +45,8 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
     }
     ctx.setLineDash([])
 
-    // Draw line - muted professional
-    ctx.strokeStyle = '#4A6FA5'
+    // Draw line - primary blue
+    ctx.strokeStyle = '#3B82F6'
     ctx.lineWidth = 2
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -70,8 +70,8 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
 
     // Create gradient fill - subtle
     const gradient = ctx.createLinearGradient(0, padding, 0, padding + chartHeight)
-    gradient.addColorStop(0, 'rgba(74, 111, 165, 0.1)')
-    gradient.addColorStop(1, 'rgba(74, 111, 165, 0)')
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.15)')
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0)')
 
     ctx.fillStyle = gradient
     ctx.lineTo(padding + chartWidth, padding + chartHeight)
@@ -79,14 +79,24 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
     ctx.closePath()
     ctx.fill()
 
-    // Draw last point - subtle
+    // Draw last point with glow
     if (data.length > 0) {
       const lastPoint = data[data.length - 1]
       const lastX = padding + chartWidth
       const lastY = padding + chartHeight - ((lastPoint.value - minValue) / valueRange) * chartHeight
 
-      ctx.fillStyle = '#0A0E17'
-      ctx.strokeStyle = '#4A6FA5'
+      // Glow effect
+      const glowGradient = ctx.createRadialGradient(lastX, lastY, 0, lastX, lastY, 12)
+      glowGradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)')
+      glowGradient.addColorStop(1, 'rgba(59, 130, 246, 0)')
+      ctx.fillStyle = glowGradient
+      ctx.beginPath()
+      ctx.arc(lastX, lastY, 12, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Point
+      ctx.fillStyle = '#0B0F14'
+      ctx.strokeStyle = '#3B82F6'
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.arc(lastX, lastY, 4, 0, Math.PI * 2)
@@ -96,7 +106,7 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
 
     // Draw labels - muted
     ctx.fillStyle = '#475569'
-    ctx.font = '500 11px IBM Plex Sans, sans-serif'
+    ctx.font = '500 11px Inter, sans-serif'
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
 
@@ -109,7 +119,7 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
 
   if (loading) {
     return (
-      <div className="card p-4 h-[280px] flex items-center justify-center">
+      <div className="card p-4 h-[280px] flex items-center justify-center" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
         <div className="animate-pulse flex flex-col items-center w-full">
           <div className="h-[200px] w-full bg-surface-700/30 rounded-lg"></div>
         </div>
@@ -119,8 +129,8 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
 
   if (!data.length) {
     return (
-      <div className="card p-5 h-[280px] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 bg-surface-700/50 rounded-full flex items-center justify-center mb-3 border border-border/30">
+      <div className="card p-5 h-[280px] flex flex-col items-center justify-center" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
+        <div className="w-10 h-10 bg-surface-700/50 rounded-full flex items-center justify-center mb-3 border border-white/5">
           <svg className="w-5 h-5 text-content-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
           </svg>
@@ -132,7 +142,7 @@ export default function ResponseTimeChart({ data, loading }: ResponseTimeChartPr
   }
 
   return (
-    <div className="card p-4 h-[280px]">
+    <div className="card p-4 h-[280px]" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-content-primary">Response Time History</h3>
       </div>

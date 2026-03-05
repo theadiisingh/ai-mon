@@ -8,7 +8,7 @@ interface UptimeChartProps {
 export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
   if (loading) {
     return (
-      <div className="card p-4 h-[280px] flex items-center justify-center">
+      <div className="card p-4 h-[280px] flex items-center justify-center" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
         <div className="animate-pulse flex flex-col items-center">
           <div className="h-28 w-28 bg-surface-700/50 rounded-full"></div>
           <p className="mt-4 text-xs text-content-tertiary font-medium">Loading metrics...</p>
@@ -19,8 +19,8 @@ export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
 
   if (!uptime) {
     return (
-      <div className="card p-5 h-[280px] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 bg-surface-700/50 rounded-full flex items-center justify-center mb-3 border border-border/30">
+      <div className="card p-5 h-[280px] flex flex-col items-center justify-center" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
+        <div className="w-10 h-10 bg-surface-700/50 rounded-full flex items-center justify-center mb-3 border border-white/5">
           <svg className="w-5 h-5 text-content-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -37,13 +37,13 @@ export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
   const getColor = () => {
-    if (percentage >= 99) return '#10B981'
-    if (percentage >= 95) return '#D97706'
-    return '#DC2626'
+    if (percentage >= 99) return '#10B981' // emerald
+    if (percentage >= 95) return '#F59E0B' // amber
+    return '#EF4444' // red
   }
 
   return (
-    <div className="card p-4 h-[280px] flex flex-col">
+    <div className="card p-4 h-[280px] flex flex-col" style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)' }}>
       <h3 className="text-sm font-medium text-content-primary mb-3">Uptime (Last 24h)</h3>
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="relative w-32 h-32">
@@ -57,7 +57,7 @@ export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
               strokeWidth="8"
               fill="none"
             />
-            {/* Progress circle */}
+            {/* Progress circle with glow */}
             <circle
               cx="64"
               cy="64"
@@ -68,7 +68,8 @@ export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
-              className="transition-all duration-500 ease-engineered"
+              className="transition-all duration-700 ease-out"
+              style={{ filter: `drop-shadow(0 0 6px ${getColor()}40)` }}
             />
           </svg>
           {/* Inner text */}
@@ -88,10 +89,15 @@ export default function UptimeChart({ uptime, loading }: UptimeChartProps) {
             <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider mb-0.5">Checks</p>
             <p className="text-sm font-semibold text-content-primary font-mono-nums">{uptime.total_checks}</p>
           </div>
-          <div className="w-px h-5 bg-border/30"></div>
+          <div className="w-px h-5 bg-white/10"></div>
           <div className="text-center">
             <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider mb-0.5">Success</p>
-            <p className="text-sm font-semibold text-success font-mono-nums">{uptime.successful_checks}</p>
+            <p className="text-sm font-semibold text-emerald-500 font-mono-nums">{uptime.successful_checks}</p>
+          </div>
+          <div className="w-px h-5 bg-white/10"></div>
+          <div className="text-center">
+            <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider mb-0.5">Failed</p>
+            <p className="text-sm font-semibold text-red-500 font-mono-nums">{uptime.failed_checks}</p>
           </div>
         </div>
       </div>

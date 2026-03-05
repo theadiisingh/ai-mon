@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 from app.monitoring_engine.scheduler import get_scheduler
-from app.monitoring_engine.health_checker import run_health_check, close_global_http_client
+from app.monitoring_engine.health_checker import run_health_check
 from app.core.config import settings
 from loguru import logger
 
@@ -57,27 +57,11 @@ class TaskManager:
         except Exception as e:
             logger.warning(f"Error removing job: {e}")
         
-        # Shutdown scheduler with error handling for event loop issues
+        # Shutdown scheduler
         try:
             self.scheduler.shutdown(wait=True)
         except Exception as e:
             logger.warning(f"Error shutting down scheduler: {e}")
-        
-        # Close global HTTP client with event loop check
-        try:
-            # Check if event loop is running before trying to close
-            try:
-                loop = asyncio.get_running_loop()
-                # If we can get here, there's a running loop
-                await close_global_http_client()
-            except RuntimeError:
-                # No running event loop - use asyncio.run for cleanup
-                try:
-                    asyncio.run(close_global_http_client())
-                except Exception as e2:
-                    logger.warning(f"Error closing HTTP client (asyncio.run): {e2}")
-        except Exception as e:
-            logger.warning(f"Error closing HTTP client: {e}")
         
         self.is_running = False
         logger.info("Monitoring stopped")
@@ -99,23 +83,27 @@ class TaskManager:
             logger.error(f"Error running health check: {e}", exc_info=True)
     
     def _run_health_check_sync_wrapper(self):
-        """Sync wrapper for APScheduler to call async function."""
+        """Sync wrapper for BackgroundScheduler to call async function.
+        
+        BackgroundScheduler uses threads, so we need to run the async function
+        in a new event loop for each execution.
+        """
         try:
-            # Get the current event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is already running (e.g., in uvicorn), use create_task
-                asyncio.create_task(self._run_health_check_wrapper())
-            else:
-                # If no loop running, run the coroutine
-                loop.run_until_complete(self._run_health_check_wrapper())
+            # Create a new event loop for this thread
+            asyncio.run(self._run_health_check_wrapper())
         except RuntimeError as e:
-            # Handle case where there's no event loop
-            logger.warning(f"Could not get event loop: {e}")
-            try:
-                asyncio.run(self._run_health_check_wrapper())
-            except Exception as e2:
-                logger.error(f"Failed to run health check: {e2}")
+            # Handle "event loop is closed" error
+            if "loop is closed" in str(e).lower():
+                logger.warning("Event loop is closed, creating new one")
+                # Create a fresh event loop and try again
+                try:
+                    asyncio.run(self._run_health_check_wrapper())
+                except Exception as e2:
+                    logger.error(f"Failed to run health check after loop reset: {e2}")
+            else:
+                logger.error(f"Failed to run health check: {e}")
+        except Exception as e:
+            logger.error(f"Error in health check wrapper: {e}", exc_info=True)
     
     def get_status(self) -> Dict[str, Any]:
         """Get the status of monitoring tasks."""

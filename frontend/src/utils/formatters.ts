@@ -1,15 +1,55 @@
+/**
+ * Format a date string to local date display.
+ * Handles ISO 8601 format with timezone info.
+ */
 export function formatDate(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
 }
 
+/**
+ * Format a date/time string to local date/time display.
+ * ALWAYS converts to local timezone by treating input as UTC.
+ * This ensures consistent local time display regardless of backend timezone handling.
+ */
 export function formatDateTime(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
+  if (!dateString) return '-'
+  
+  // Handle different date formats
+  let cleanDateString = dateString.trim()
+  
+  // If it has 'T', it's an ISO date - parse and convert to local
+  if (cleanDateString.includes('T')) {
+    // Split the date and time parts
+    const parts = cleanDateString.split('T')
+    const datePart = parts[0]
+    let timePart = parts[1] || ''
+    
+    // Remove any timezone info (like +00:00, -05:30, Z)
+    timePart = timePart.replace(/(\+\d{2}:\d{2}|-\d{2}:\d{2}|Z)$/, '')
+    
+    // Combine as UTC
+    cleanDateString = `${datePart}T${timePart}Z`
+  }
+  
+  const date = new Date(cleanDateString)
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return '-'
+  }
+  
+  // Manually adjust for timezone if needed - treat as UTC and convert to local
+  const utcDate = new Date(cleanDateString)
+  
+  // Format using local timezone - timezoneOffset is intentionally unused but kept for potential future use
+  void date.getTimezoneOffset() // Preserve for potential timezone calculations
+  
+  return utcDate.toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -18,9 +58,13 @@ export function formatDateTime(dateString: string): string {
   })
 }
 
+/**
+ * Format a time string to local time display.
+ * Handles ISO 8601 format with timezone info.
+ */
 export function formatTime(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleTimeString('en-US', {
+  return date.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   })
@@ -83,6 +127,10 @@ export function getMethodColor(method: string): string {
   }
 }
 
+/**
+ * Get uptime color class based on percentage.
+ * Pure presentation function - no calculations.
+ */
 export function getUptimeColor(percentage: number): string {
   if (percentage >= 99) return 'text-success'
   if (percentage >= 95) return 'text-warning'
@@ -90,30 +138,9 @@ export function getUptimeColor(percentage: number): string {
 }
 
 /**
- * Calculate average uptime from a list of API endpoints.
- * Uses the uptime_percentage field directly from the backend.
- */
-export function calculateAverageUptime(endpoints: { uptime_percentage: number | null | undefined }[]): number {
-  if (!endpoints || endpoints.length === 0) return 0
-  
-  const validEndpoints = endpoints.filter(ep => ep.uptime_percentage != null)
-  if (validEndpoints.length === 0) return 0
-  
-  const total = validEndpoints.reduce((sum, ep) => sum + (ep.uptime_percentage || 0), 0)
-  return total / validEndpoints.length
-}
-
-/**
- * Calculate uptime from raw check counts (as returned by metrics API).
- */
-export function calculateUptimeFromCounts(successfulChecks: number, totalChecks: number): number {
-  if (totalChecks === 0) return 100
-  return (successfulChecks / totalChecks) * 100
-}
-
-/**
- * Get the appropriate uptime color based on percentage.
+ * Get the appropriate uptime status based on percentage.
  * Returns 'success', 'warning', or 'danger' for use with StatCard.
+ * Pure presentation function - no calculations.
  */
 export function getUptimeStatus(percentage: number): 'success' | 'warning' | 'danger' {
   if (percentage >= 99) return 'success'

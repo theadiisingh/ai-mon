@@ -263,3 +263,53 @@ async def get_endpoint_insights(
     insights = list(result.scalars().all())
     
     return insights
+
+
+@router.get("/endpoints/{endpoint_id}/latency-history")
+async def get_latency_history(
+    endpoint_id: int,
+    hours: int = Query(default=24, ge=1, le=168),
+    current_user: UserResponse = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get latency history for a specific endpoint.
+    
+    Returns list of {time, latency} objects for charting.
+    """
+    from sqlalchemy import select
+    from datetime import datetime, timedelta
+    from app.models.monitoring_log import MonitoringLog, CheckStatus
+    
+    # Verify endpoint exists and belongs to user
+    api_service = ApiService(db)
+    endpoint = await api_service.get_endpoint(endpoint_id, current_user.id)
+    
+    if not endpoint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found"
+        )
+    
+    # Get latency data
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    
+    result = await db.execute(
+        select(MonitoringLog)
+        .where(
+            MonitoringLog.api_endpoint_id == endpoint_id,
+            MonitoringLog.checked_at >= cutoff_time,
+            MonitoringLog.response_time.isnot(None),
+            MonitoringLog.status == CheckStatus.SUCCESS
+        )
+        .order_by(MonitoringLog.checked_at.asc())
+    )
+    logs = list(result.scalars().all())
+    
+    # Return in format: [{time: "...", latency: 512}, ...]
+    return [
+        {
+            "time": log.checked_at.isoformat(),
+            "latency": log.response_time
+        }
+        for log in logs
+    ]

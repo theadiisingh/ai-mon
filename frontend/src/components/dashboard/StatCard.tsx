@@ -19,19 +19,23 @@ export default function StatCard({ title, value, subtitle, icon, trend, color = 
   const colorConfig = {
     primary: {
       accent: 'text-primary',
-      iconBg: 'bg-surface-700/20 backdrop-blur-sm border border-white/5',
+      iconBg: 'bg-primary/10 backdrop-blur-sm border border-primary/10',
+      glow: 'group-hover:shadow-primary/5',
     },
     success: {
-      accent: 'text-success',
-      iconBg: 'bg-success/5 backdrop-blur-sm border border-success/10',
+      accent: 'text-emerald-500',
+      iconBg: 'bg-emerald-500/10 backdrop-blur-sm border border-emerald-500/10',
+      glow: 'group-hover:shadow-emerald-500/5',
     },
     warning: {
-      accent: 'text-warning',
-      iconBg: 'bg-warning/5 backdrop-blur-sm border border-warning/10',
+      accent: 'text-amber-500',
+      iconBg: 'bg-amber-500/10 backdrop-blur-sm border border-amber-500/10',
+      glow: 'group-hover:shadow-amber-500/5',
     },
     danger: {
-      accent: 'text-danger',
-      iconBg: 'bg-danger/5 backdrop-blur-sm border border-danger/10',
+      accent: 'text-red-500',
+      iconBg: 'bg-red-500/10 backdrop-blur-sm border border-red-500/10',
+      glow: 'group-hover:shadow-red-500/5',
     },
   }
 
@@ -41,8 +45,8 @@ export default function StatCard({ title, value, subtitle, icon, trend, color = 
   useEffect(() => {
     const numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0
     if (!isNaN(numValue) && typeof value === 'number') {
-      const duration = 600
-      const steps = 15
+      const duration = 800
+      const steps = 20
       const increment = numValue / steps
       let current = 0
       
@@ -64,9 +68,14 @@ export default function StatCard({ title, value, subtitle, icon, trend, color = 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card card-hover p-4 flex flex-col justify-between"
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+      className={`card card-hover p-4 flex flex-col justify-between group bg-surface-800/40 backdrop-blur-sm ${config.glow}`}
+      style={{
+        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)',
+      }}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -76,7 +85,7 @@ export default function StatCard({ title, value, subtitle, icon, trend, color = 
               {typeof value === 'number' ? displayValue : value}
             </h3>
             {trend && (
-              <p className={`text-xs font-medium font-mono-nums ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
+              <p className={`text-xs font-medium font-mono-nums ${trend.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </p>
             )}

@@ -1,9 +1,21 @@
 """AI Insight Pydantic schemas for request/response validation."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
+from pydantic.functional_serializers import PlainSerializer
 
 from app.models.ai_insight import InsightType, SeverityLevel
+
+
+# Custom serializer to ensure datetime is serialized as ISO format with timezone
+def serialize_datetime(dt: datetime) -> str:
+    """Serialize datetime to ISO format with timezone info."""
+    if dt is None:
+        return None
+    # If datetime is naive (no timezone), assume UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
 
 
 class AIInsightBase(BaseModel):
@@ -51,8 +63,8 @@ class AIInsightResponse(AIInsightBase):
     tokens_used: Optional[int] = None
     is_read: str
     is_resolved: bool
-    created_at: datetime
-    resolved_at: Optional[datetime] = None
+    created_at: datetime = Field(serializer=serialize_datetime)
+    resolved_at: Optional[datetime] = Field(default=None, serializer=serialize_datetime)
     
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 

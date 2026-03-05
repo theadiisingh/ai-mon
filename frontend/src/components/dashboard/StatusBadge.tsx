@@ -1,81 +1,130 @@
-import { motion } from 'framer-motion'
+
+import { motion } from 'framer-motion';
+
+type StatusType = 'success' | 'failure' | 'error' | 'timeout' | 'active' | 'inactive' | 'up' | 'down' | 'unknown' | 'checking'
+
+interface StatusConfig {
+  bg: string;
+  text: string;
+  border: string;
+  dot: string;
+  dotGlow: string;
+  label: string;
+  animate?: boolean;
+}
 
 interface StatusBadgeProps {
-  status: 'success' | 'failure' | 'error' | 'timeout' | 'active' | 'inactive'
+  status: StatusType
 }
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
-  const statusConfig = {
+  const statusConfig: Record<StatusType, StatusConfig> = {
     success: { 
-      bg: 'bg-success/10', 
-      text: 'text-success', 
-      border: 'border-success/20', 
-      dot: 'bg-success',
-      dotGlow: 'shadow-[0_0_6px_rgba(16,185,129,0.4)]',
+      bg: 'bg-emerald-500/5', 
+      text: 'text-emerald-400', 
+      border: 'border-emerald-500/10', 
+      dot: 'bg-emerald-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(52,211,153,0.3)]',
+      label: 'Healthy',
+    },
+    up: { 
+      bg: 'bg-emerald-500/5', 
+      text: 'text-emerald-400', 
+      border: 'border-emerald-500/10', 
+      dot: 'bg-emerald-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(52,211,153,0.3)]',
+      label: 'UP',
     },
     failure: { 
-      bg: 'bg-danger/10', 
-      text: 'text-danger', 
-      border: 'border-danger/20', 
-      dot: 'bg-danger',
-      dotGlow: 'shadow-[0_0_6px_rgba(220,38,38,0.4)]',
+      bg: 'bg-red-500/5', 
+      text: 'text-red-400', 
+      border: 'border-red-500/10', 
+      dot: 'bg-red-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(248,113,113,0.3)]',
+      label: 'Failed',
+    },
+    down: { 
+      bg: 'bg-red-500/5', 
+      text: 'text-red-400', 
+      border: 'border-red-500/10', 
+      dot: 'bg-red-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(248,113,113,0.3)]',
+      label: 'DOWN',
     },
     error: { 
-      bg: 'bg-danger/10', 
-      text: 'text-danger', 
-      border: 'border-danger/20', 
-      dot: 'bg-danger',
-      dotGlow: 'shadow-[0_0_6px_rgba(220,38,38,0.4)]',
+      bg: 'bg-red-500/5', 
+      text: 'text-red-400', 
+      border: 'border-red-500/10', 
+      dot: 'bg-red-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(248,113,113,0.3)]',
+      label: 'Error',
     },
     timeout: { 
-      bg: 'bg-warning/10', 
-      text: 'text-warning', 
-      border: 'border-warning/20', 
-      dot: 'bg-warning',
-      dotGlow: 'shadow-[0_0_6px_rgba(217,119,6,0.4)]',
+      bg: 'bg-amber-500/5', 
+      text: 'text-amber-400', 
+      border: 'border-amber-500/10', 
+      dot: 'bg-amber-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(251,191,36,0.3)]',
+      label: 'Timeout',
     },
     active: { 
-      bg: 'bg-success/10', 
-      text: 'text-success', 
-      border: 'border-success/20', 
-      dot: 'bg-success',
-      dotGlow: 'shadow-[0_0_6px_rgba(16,185,129,0.4)]',
+      bg: 'bg-emerald-500/5', 
+      text: 'text-emerald-400', 
+      border: 'border-emerald-500/10', 
+      dot: 'bg-emerald-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(52,211,153,0.3)]',
+      label: 'Active',
+    },
+    checking: { 
+      bg: 'bg-blue-500/5', 
+      text: 'text-blue-400', 
+      border: 'border-blue-500/10', 
+      dot: 'bg-blue-400',
+      dotGlow: 'shadow-[0_0_4px_rgba(96,165,250,0.3)]',
+      label: 'Checking',
+      animate: true,
     },
     inactive: { 
-      bg: 'bg-surface-600/20', 
-      text: 'text-content-tertiary', 
-      border: 'border-surface-600/20', 
-      dot: 'bg-surface-500',
+      bg: 'bg-slate-500/5', 
+      text: 'text-slate-400', 
+      border: 'border-slate-500/10', 
+      dot: 'bg-slate-400',
       dotGlow: '',
+      label: 'Inactive',
     },
-  }
-
-  const statusLabels = {
-    success: 'Healthy',
-    failure: 'Failed',
-    error: 'Error',
-    timeout: 'Timeout',
-    active: 'Active',
-    inactive: 'Inactive',
+    unknown: { 
+      bg: 'bg-slate-500/5', 
+      text: 'text-slate-400', 
+      border: 'border-slate-500/10', 
+      dot: 'bg-slate-400',
+      dotGlow: '',
+      label: 'Unknown',
+    },
   }
 
   const config = statusConfig[status]
-  const isActive = status === 'active' || status === 'success'
+  const isHealthy = status === 'up' || status === 'success' || status === 'active'
+  const shouldAnimate = config.animate || isHealthy
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text} border ${config.border}`}>
       <motion.span 
         className={`w-1.5 h-1.5 rounded-full ${config.dot} ${config.dotGlow}`}
-        animate={isActive ? {
-          scale: [1, 1.1, 1],
+        animate={shouldAnimate ? {
+          scale: [1, 1.2, 1],
+          opacity: [1, 0.7, 1],
         } : {}}
-        transition={isActive ? {
+        transition={config.animate ? {
+          duration: 1,
+          repeat: Infinity,
+          ease: "easeInOut"
+        } : isHealthy ? {
           duration: 2,
           repeat: Infinity,
           ease: "linear"
         } : {}}
       />
-      <span>{statusLabels[status]}</span>
+      <span>{config.label}</span>
     </span>
   )
 }

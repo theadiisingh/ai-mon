@@ -1,7 +1,7 @@
 """
 API Endpoint database model.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float, Enum as SQLEnum, Index, ForeignKey
 from sqlalchemy.orm import relationship
 import enum
@@ -43,8 +43,11 @@ class ApiEndpoint(Base):
     interval_seconds = Column(Integer, default=60)  # Monitoring interval
     is_active = Column(Boolean, default=True)
     is_paused = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Explicit status field - stores actual health check result (UP, DOWN, or None for unknown)
+    status = Column(String(10), nullable=True)  # "UP", "DOWN", or None (unknown/not yet checked)
     
     # Computed fields (updated by monitoring)
     last_status_code = Column(Integer, nullable=True)

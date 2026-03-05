@@ -74,6 +74,37 @@ export default function ApiDetailPage() {
     enabled: !!id,
   })
 
+  // Fetch response time series for latency chart - using new dedicated endpoint
+  const { data: latencyData } = useQuery({
+    queryKey: ['latency', id],
+    queryFn: async () => {
+      try {
+        const response = await metricsApi.getLatencyHistory(endpointId, 24)
+        console.log('[Latency] API response:', response.data)
+        
+        // New API returns: [{time: "...", latency: 512}, ...]
+        // Need to transform to [{timestamp, value}] for the chart
+        const rawData = response.data
+        if (!rawData || !Array.isArray(rawData)) {
+          console.log('[Latency] No data returned')
+          return []
+        }
+        
+        const transformed = rawData.map((item: {time: string, latency: number}) => ({
+          timestamp: item.time,
+          value: item.latency
+        }))
+        
+        console.log('[Latency] Transformed data:', transformed)
+        return transformed
+      } catch (err: any) {
+        console.error('[Latency] Error:', err.message)
+        return []
+      }
+    },
+    enabled: !!id,
+  })
+
   const { data: insightsData } = useQuery({
     queryKey: ['insights', id],
     queryFn: async () => {
@@ -183,9 +214,14 @@ export default function ApiDetailPage() {
               {api.method}
             </span>
             <span className="flex items-center text-xs">
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${api.is_active ? 'bg-success' : 'bg-warning'}`}></span>
-              <span className={`ml-2 ${api.is_active ? 'text-success' : 'text-warning'}`}>
-                {api.is_active ? 'Active' : 'Paused'}
+              {/* Display actual health status from backend - UP, DOWN, or null (unknown) */}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                !api.status ? 'bg-surface-500' : api.status === 'DOWN' ? 'bg-danger' : 'bg-success'
+              }`}></span>
+              <span className={`ml-2 ${
+                !api.status ? 'text-content-tertiary' : api.status === 'DOWN' ? 'text-danger' : 'text-success'
+              }`}>
+                {!api.status ? 'Unknown' : api.status === 'DOWN' ? 'DOWN' : 'UP'}
               </span>
             </span>
           </div>
@@ -256,7 +292,7 @@ export default function ApiDetailPage() {
 
       {/* Charts */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ResponseTimeChart data={[]} loading={metricsLoading} />
+        <ResponseTimeChart data={latencyData || []} loading={metricsLoading} />
         <UptimeChart uptime={uptimeData} loading={metricsLoading} />
       </motion.div>
 

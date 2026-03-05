@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['IBM Plex Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Consolas', 'monospace'],
       },
       // Refined spacing scale - Notion-level discipline
@@ -233,8 +233,8 @@ export default {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'glass': 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
-        // Pure black atmospheric gradient
-        'atmosphere': 'linear-gradient(180deg, #000000 0%, #0A0A0A 50%, #000000 100%)',
+// Pure black atmospheric gradient - flat black
+        'atmosphere': 'linear-gradient(180deg, #000000 0%, #000000 50%, #000000 100%)',
       },
       borderRadius: {
         // Restrained corners

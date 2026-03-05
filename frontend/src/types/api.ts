@@ -13,6 +13,8 @@ export interface ApiEndpoint {
   interval_seconds: number
   is_active: boolean
   is_paused: boolean
+  // Explicit status from health check: "UP", "DOWN", or null (not yet checked)
+  status: 'UP' | 'DOWN' | null
   created_at: string
   updated_at: string
   // Last check results

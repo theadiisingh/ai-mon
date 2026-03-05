@@ -46,6 +46,7 @@ class ApiEndpointResponse(ApiEndpointBase):
     user_id: int
     is_active: bool
     is_paused: bool
+    status: Optional[str] = None  # "UP" or "DOWN" - explicit health status
     last_status_code: Optional[int] = None
     last_response_time: Optional[float] = None
     avg_response_time: Optional[float] = None

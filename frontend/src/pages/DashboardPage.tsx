@@ -14,14 +14,14 @@ const containerVariants: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.03
+      staggerChildren: 0.05
     }
   }
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 4 },
-  show: { opacity: 1, y: 0 }
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] } }
 }
 
 export default function DashboardPage() {
@@ -196,7 +196,7 @@ export default function DashboardPage() {
         <motion.div variants={itemVariants}>
           <StatCard
             title="Avg Latency"
-            value={`${avgResponseTime.toFixed(0)}ms`}
+            value={`${avgResponseTime.toFixed(2)}ms`}
             subtitle="Global average"
             icon={<Zap className="w-4 h-4" />}
             color="primary"

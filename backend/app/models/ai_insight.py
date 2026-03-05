@@ -1,7 +1,7 @@
 """
 AI Insight database model.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum as SQLEnum, Float, Boolean
 from sqlalchemy.orm import relationship
 import enum
@@ -59,8 +59,8 @@ class AIInsight(Base):
     is_resolved = Column(Boolean, default=False)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
     api_endpoint = relationship("ApiEndpoint", back_populates="ai_insights")

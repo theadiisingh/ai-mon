@@ -101,7 +101,38 @@ async def init_db():
     log.info("Initializing database tables...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Run migrations for existing databases - add missing columns
+    await run_migrations()
+    
     log.info("Database tables initialized successfully")
+
+
+async def run_migrations():
+    """Run database migrations to add missing columns to existing tables."""
+    from sqlalchemy import inspect
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(_run_sync_migrations)
+
+
+def _run_sync_migrations(conn):
+    """Synchronous migration helper."""
+    from sqlalchemy import text
+    
+    # Check if status column exists in api_endpoints using raw SQL
+    result = conn.execute(text("PRAGMA table_info(api_endpoints)"))
+    columns = result.fetchall()
+    column_names = [col[1] for col in columns]
+    
+    if 'status' not in column_names:
+        log.info("Adding 'status' column to api_endpoints table...")
+        conn.execute(text(
+            "ALTER TABLE api_endpoints ADD COLUMN status VARCHAR(10)"
+        ))
+        log.info("'status' column added successfully")
+    
+    log.info("Database migrations completed")
 
 
 async def close_db():

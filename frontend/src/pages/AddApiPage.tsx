@@ -62,37 +62,37 @@ export default function AddApiPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.14 }}
+      transition={{ duration: 0.2 }}
       className="max-w-2xl mx-auto"
     >
-      <div className="mb-5">
+      <div className="mb-6">
         <button 
           onClick={() => navigate('/dashboard')} 
-          className="flex items-center text-xs font-medium text-content-tertiary hover:text-content-secondary transition-colors mb-3"
+          className="flex items-center text-xs font-medium text-content-tertiary hover:text-content-secondary transition-colors duration-150 mb-3"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" /> 
           Back to Dashboard
         </button>
-        <h1 className="text-lg font-semibold text-content-primary">Add New Endpoint</h1>
-        <p className="text-xs text-content-tertiary mt-1">Configure a new API endpoint for active monitoring</p>
+        <h1 className="text-xl font-semibold text-content-primary">Add New Endpoint</h1>
+        <p className="text-sm text-content-tertiary mt-1">Configure a new API endpoint for active monitoring</p>
       </div>
 
-      <div className="card">
-        <div className="px-4 py-3.5 border-b border-border/30">
+      <div className="card" style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }}>
+        <div className="px-5 py-4 border-b border-white/5">
           <h2 className="text-sm font-medium text-content-primary">Endpoint Configuration</h2>
           <p className="text-xs text-content-tertiary mt-0.5">Provide the basic details for your API.</p>
         </div>
         <div className="p-5">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-2.5 bg-danger/5 border border-danger/10 text-danger text-xs flex items-start gap-2 rounded"
+                className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2 rounded-lg"
               >
-                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <div className="font-medium">{error}</div>
               </motion.div>
             )}
@@ -106,7 +106,7 @@ export default function AddApiPage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="input"
+                className="input bg-surface-800/50"
                 placeholder="e.g. Production Payment API"
               />
             </div>
@@ -120,12 +120,12 @@ export default function AddApiPage() {
                 value={formData.url}
                 onChange={handleChange}
                 required
-                className="input font-mono-nums text-xs"
+                className="input bg-surface-800/50 font-mono-nums text-xs"
                 placeholder="https://api.example.com/v1/payments"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="method" className="label">HTTP Method</label>
                 <select
@@ -133,7 +133,7 @@ export default function AddApiPage() {
                   name="method"
                   value={formData.method}
                   onChange={handleChange}
-                  className="input"
+                  className="input bg-surface-800/50"
                 >
                   <option value="GET">GET</option>
                   <option value="POST">POST</option>
@@ -152,14 +152,14 @@ export default function AddApiPage() {
                   value={formData.expected_status_code}
                   onChange={handleChange}
                   required
-                  className="input font-mono-nums"
+                  className="input bg-surface-800/50 font-mono-nums"
                   min="100"
                   max="599"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="interval_seconds" className="label">Check Interval</label>
                 <div className="relative">
@@ -170,7 +170,7 @@ export default function AddApiPage() {
                     value={formData.interval_seconds}
                     onChange={handleChange}
                     required
-                    className="input pr-9 font-mono-nums"
+                    className="input bg-surface-800/50 pr-12 font-mono-nums"
                     min="10"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -189,7 +189,7 @@ export default function AddApiPage() {
                     value={formData.timeout_seconds}
                     onChange={handleChange}
                     required
-                    className="input pr-9 font-mono-nums"
+                    className="input bg-surface-800/50 pr-12 font-mono-nums"
                     min="1"
                     max="300"
                   />
@@ -207,36 +207,36 @@ export default function AddApiPage() {
                 name="headers"
                 value={formData.headers}
                 onChange={handleChange}
-                className="input font-mono-nums text-xs leading-relaxed"
+                className="input bg-surface-800/50 font-mono-nums text-xs leading-relaxed"
                 rows={3}
                 placeholder='{ "Authorization": "Bearer token" }'
               />
               <p className="mt-1.5 text-[10px] text-content-tertiary">Optional. Enter headers as valid JSON.</p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-border/30 mt-4">
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/5 mt-6">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
-                className="btn btn-secondary px-4 text-xs"
+                className="btn btn-secondary px-5 py-2 text-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn btn-primary px-4 flex items-center gap-2 text-xs"
+                className="btn btn-primary px-5 py-2 flex items-center gap-2 text-sm"
               >
                 {isSubmitting ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Creating...
                   </span>
                 ) : (
                   <>
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-4 h-4" />
                     Save Endpoint
                   </>
                 )}

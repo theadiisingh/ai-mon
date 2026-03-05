@@ -75,4 +75,10 @@ export const metricsApi = {
   // AI Insights - Backend: /api/monitoring/endpoints/{id}/insights
   getInsights: (endpointId: number) => 
     api.get<AIInsight[]>(`/monitoring/endpoints/${endpointId}/insights`),
+  
+  // Latency History - NEW: Returns [{time, latency}, ...]
+  getLatencyHistory: (endpointId: number, hours?: number) => 
+    api.get<Array<{time: string, latency: number}>>(`/monitoring/endpoints/${endpointId}/latency-history`, { 
+      params: { hours } 
+    }),
 }

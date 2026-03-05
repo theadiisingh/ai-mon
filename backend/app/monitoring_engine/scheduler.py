@@ -1,10 +1,9 @@
 """
 Scheduler for periodic monitoring tasks.
 """
-import asyncio
 from typing import Dict, Callable, Any
 from datetime import datetime
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 
@@ -15,7 +14,7 @@ class MonitoringScheduler:
     """Scheduler for running periodic monitoring tasks."""
     
     def __init__(self):
-        self.scheduler = AsyncIOScheduler()
+        self.scheduler = BackgroundScheduler()
         self.jobs: Dict[str, Callable] = {}
     
     def add_job(

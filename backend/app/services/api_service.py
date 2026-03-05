@@ -231,10 +231,14 @@ class ApiService:
         endpoint.last_checked_at = func.now()
         endpoint.total_checks += 1
         
+        # Set explicit status based on check result
+        # "UP" if check was successful, "DOWN" if failed
         if is_success:
             endpoint.successful_checks += 1
+            endpoint.status = "UP"
         else:
             endpoint.failed_checks += 1
+            endpoint.status = "DOWN"
         
         # Calculate uptime percentage
         if endpoint.total_checks > 0:

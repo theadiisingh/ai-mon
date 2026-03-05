@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { MetricsProvider } from './context/MetricsContext'
 import './styles/globals.css'
 
 const queryClient = new QueryClient({
@@ -21,7 +22,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <MetricsProvider>
+            <App />
+          </MetricsProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

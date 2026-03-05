@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -286,9 +286,9 @@
   border-color: rgba(74, 111, 165, 0.2);
 }
 
-/* Atmospheric background classes */
+/* Atmospheric background classes - PURE BLACK */
 .bg-atmosphere {
-  background: linear-gradient(180deg, #000000 0%, #0A0A0A 50%, #000000 100%);
+  background: #000000;
 }
 
 .bg-noise {

@@ -1,7 +1,7 @@
 """
 Monitoring Log database model.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Text, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.orm import relationship
 import enum
@@ -41,7 +41,7 @@ class MonitoringLog(Base):
     response_body = Column(Text, nullable=True)  # Truncated response for debugging
     
     # Timestamp
-    checked_at = Column(DateTime, default=datetime.utcnow, index=True)
+    checked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     
     # Anomaly detection
     is_anomaly = Column(Boolean, default=False)

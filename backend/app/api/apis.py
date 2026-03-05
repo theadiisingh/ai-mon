@@ -4,6 +4,7 @@ API endpoints management routes.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
+from loguru import logger
 
 from app.core.dependencies import get_db, get_current_active_user
 from app.schemas.api_schema import (
@@ -14,6 +15,7 @@ from app.schemas.api_schema import (
 )
 from app.services.api_service import ApiService
 from app.schemas.user_schema import UserResponse
+from app.monitoring_engine.health_checker import run_health_check_single_endpoint
 
 router = APIRouter()
 
@@ -31,6 +33,26 @@ async def create_endpoint(
         endpoint_data=endpoint_data,
         user_id=current_user.id
     )
+    
+    # Commit the endpoint FIRST so it exists in the database
+    await db.commit()
+    await db.refresh(endpoint)
+    
+    logger.info(f"Created endpoint {endpoint.id}, triggering immediate health check...")
+    
+    # Then trigger immediate health check for the newly created endpoint
+    # This ensures the endpoint is checked instantly after being added,
+    # then continues to be checked at the configured interval
+    try:
+        result = await run_health_check_single_endpoint(endpoint.id)
+        if isinstance(result, dict) and "error" in result:
+            logger.warning(f"Immediate health check error for endpoint {endpoint.id}: {result['error']}")
+        else:
+            logger.info(f"Immediate health check completed for endpoint {endpoint.id}: {result}")
+    except Exception as e:
+        # Log the error but don't fail the endpoint creation
+        # The scheduled health check will still run at the next interval
+        logger.warning(f"Immediate health check failed for endpoint {endpoint.id}: {e}")
     
     return endpoint
 

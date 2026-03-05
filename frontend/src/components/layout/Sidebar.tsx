@@ -18,15 +18,18 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="w-56 h-screen bg-surface-900/40 backdrop-blur-xl border-r border-white/5 flex flex-col shrink-0 relative">
+    <aside className="w-56 h-screen flex flex-col shrink-0 relative z-20">
+      {/* Glass panel background */}
+      <div className="absolute inset-0 bg-[#11161D]/80 backdrop-blur-xl border-r border-white/5 rounded-r-xl" />
+      
       {/* Vertical accent line - brand signature */}
-      <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-accent/60 via-accent/30 to-transparent" />
+      <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-primary/50 via-primary/20 to-transparent" />
       
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-white/5">
+      <div className="px-4 py-5 border-b border-white/5 relative z-10">
         <Link to="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 bg-surface-800/50 backdrop-blur-sm border border-white/5 rounded flex items-center justify-center">
-            <Shield className="w-4 h-4 text-accent-light" />
+          <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/10 rounded flex items-center justify-center group-hover:border-primary/30 transition-colors duration-200">
+            <Shield className="w-4 h-4 text-primary" />
           </div>
           <div>
             <span className="text-sm font-semibold text-content-primary tracking-tight">AIMON</span>
@@ -36,7 +39,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="px-3 py-4 flex-1">
+      <nav className="px-3 py-4 flex-1 relative z-10">
         <div className="text-[10px] font-medium text-content-tertiary uppercase tracking-widest mb-3 px-2">Operations</div>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path
@@ -44,11 +47,11 @@ export default function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={`sidebar-link relative mb-0.5 ${isActive ? 'active' : ''}`}
+              className={`sidebar-link relative mb-0.5 group ${isActive ? 'active' : ''}`}
             >
               {/* Active indicator */}
-              {isActive && <div className="nav-indicator" />}
-              <span className={isActive ? 'text-accent-light' : 'text-content-tertiary group-hover:text-content-secondary'}>
+              {isActive && <div className="nav-indicator bg-primary" />}
+              <span className={isActive ? 'text-primary' : 'text-content-tertiary group-hover:text-content-secondary transition-colors duration-150'}>
                 {item.icon}
               </span>
               <span>{item.label}</span>
@@ -60,9 +63,9 @@ export default function Sidebar() {
         <div className="text-[10px] font-medium text-content-tertiary uppercase tracking-widest mt-6 mb-3 px-2">Insights</div>
         <Link
           to="/dashboard"
-          className="sidebar-link relative mb-0.5"
+          className="sidebar-link relative mb-0.5 group"
         >
-          <span className="text-content-tertiary">
+          <span className="text-content-tertiary group-hover:text-content-secondary transition-colors duration-150">
             <BarChart3 className="w-4 h-4" />
           </span>
           <span>Analytics</span>
@@ -70,7 +73,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Status footer */}
-      <div className="px-3 py-3 border-t border-white/5">
+      <div className="px-3 py-3 border-t border-white/5 relative z-10">
         <div className="flex items-center gap-2.5 px-2 py-1.5 bg-surface-800/40 backdrop-blur-sm rounded border border-white/5">
           <div className="relative">
             <div className="w-2 h-2 rounded-full bg-success"></div>

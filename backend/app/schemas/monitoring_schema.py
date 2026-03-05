@@ -1,9 +1,9 @@
 """
 Monitoring Pydantic schemas for request/response validation.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 
 from app.models.monitoring_log import CheckStatus
 
@@ -29,6 +29,14 @@ class MonitoringLogResponse(MonitoringLogBase):
     checked_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_serializer('checked_at')
+    def serialize_datetime(self, dt: datetime) -> str:
+        """Serialize datetime as ISO 8601 string with UTC timezone."""
+        # Ensure the datetime is timezone-aware (UTC)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
 
 class MonitoringLogListResponse(BaseModel):
@@ -106,6 +114,18 @@ class TimeSeriesData(BaseModel):
     start_time: datetime
     end_time: datetime
     interval_minutes: int
+    
+    @field_serializer('start_time')
+    def serialize_start_time(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+    
+    @field_serializer('end_time')
+    def serialize_end_time(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
 
 class AnomalyResponse(BaseModel):
@@ -115,6 +135,12 @@ class AnomalyResponse(BaseModel):
     response_time: Optional[float]
     status_code: Optional[int]
     anomaly_score: float
+    
+    @field_serializer('checked_at')
+    def serialize_checked_at(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
 
 class DowntimePeriod(BaseModel):
@@ -123,3 +149,15 @@ class DowntimePeriod(BaseModel):
     end_time: datetime
     duration_minutes: float
     error_message: Optional[str] = None
+    
+    @field_serializer('start_time')
+    def serialize_start_time(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+    
+    @field_serializer('end_time')
+    def serialize_end_time(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()

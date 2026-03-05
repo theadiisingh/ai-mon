@@ -40,12 +40,22 @@ export interface Metrics {
   avg_response_time: number
   min_response_time: number
   max_response_time: number
+  avg_response_time_p95?: number
+  anomaly_count?: number
 }
 
 export interface Uptime {
   total_checks: number
   successful_checks: number
+  failed_checks?: number
   uptime_percentage: number
+  total_downtime_minutes?: number
+  downtime_periods?: Array<{
+    start_time: string
+    end_time: string
+    duration_minutes: number
+    error_message?: string
+  }>
 }
 
 export interface TimeSeriesPoint {

@@ -165,7 +165,8 @@ class HealthChecker:
             response_time = (end_time - start_time).total_seconds() * 1000
             
             status_code = response.status_code
-            is_success = status_code == endpoint.expected_status_code
+            # Status is UP only for 2xx responses, otherwise DOWN
+            is_success = 200 <= status_code < 300
             status = CheckStatus.SUCCESS if is_success else CheckStatus.FAILURE
             
             is_anomaly = False
@@ -183,7 +184,7 @@ class HealthChecker:
                 status=status,
                 status_code=status_code,
                 response_time=response_time,
-                error_message=None if is_success else f"Expected {endpoint.expected_status_code}, got {status_code}",
+                error_message=None if is_success else f"Expected 2xx (200-299), got {status_code}",
                 is_anomaly=is_anomaly,
                 anomaly_score=anomaly_score,
                 request_method=endpoint.method.value,
@@ -320,26 +321,44 @@ class HealthChecker:
 
 
 async def run_health_check():
-    """Run health check for all active endpoints (used by scheduler)."""
+    """Run health check for all active endpoints (used by scheduler).
+    
+    Creates a fresh HTTP client for each execution to avoid event loop issues.
+    """
     from app.core.database import AsyncSessionLocal
     
     logger.info("Starting health check cycle...")
     
-    async with AsyncSessionLocal() as db:
-        http_client = await get_global_http_client()
-        checker = HealthChecker(db, http_client=http_client)
-        try:
-            results = await checker.check_all_active_endpoints()
-            await db.commit()
-            logger.info(
-                f"Health check completed: total={results['total']}, "
-                f"successful={results['successful']}, failed={results['failed']}"
-            )
-            return results
-        except Exception as e:
-            await db.rollback()
-            logger.error(f"Health check cycle failed: {e}")
-            raise
+    # Create a fresh HTTP client for each health check cycle
+    # This avoids event loop issues with reused clients
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(30.0),
+        follow_redirects=True,
+        limits=httpx.Limits(
+            max_keepalive_connections=20,
+            max_connections=100
+        )
+    )
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            checker = HealthChecker(db, http_client=http_client)
+            try:
+                results = await checker.check_all_active_endpoints()
+                await db.commit()
+                logger.info(
+                    f"Health check completed: total={results['total']}, "
+                    f"successful={results['successful']}, failed={results['failed']}"
+                )
+                return results
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Health check cycle failed: {e}")
+                raise
+    finally:
+        # Always close the HTTP client after use
+        await http_client.aclose()
+        logger.debug("Health check HTTP client closed")
 
 
 async def run_health_check_single_endpoint(endpoint_id: int):
