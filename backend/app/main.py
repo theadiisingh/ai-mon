@@ -6,7 +6,7 @@ import asyncio
 import signal
 from contextlib import asynccontextmanager
 from typing import Any, Dict
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from loguru import logger
@@ -17,6 +17,7 @@ from app.core.database import init_db, close_db, check_db_health
 from app.api.router import api_router
 from app.monitoring_engine.task_manager import get_task_manager
 from app.utils.logger import log
+from app.core.websocket import get_websocket_manager
 
 
 @asynccontextmanager
@@ -111,6 +112,54 @@ async def log_all_requests(request: Request, call_next):
 
 # Include API router
 app.include_router(api_router, prefix="/api")
+
+
+# =============================================================================
+# WEBSOCKET ENDPOINT - Real-time monitoring updates
+# =============================================================================
+# WebSocket endpoint for real-time monitoring updates
+# Clients connect to receive instant notifications when health checks complete
+
+@app.websocket("/ws/monitor-updates")
+async def websocket_monitor_updates(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time monitoring updates.
+    
+    Clients connect to receive instant notifications when:
+    - A health check completes
+    - An endpoint status changes
+    - New metrics are available
+    
+    The frontend listens for these events and triggers a refetch
+    of the relevant data from the backend APIs.
+    """
+    # Accept the WebSocket connection
+    await websocket.accept()
+    
+    # Get the WebSocket manager
+    ws_manager = get_websocket_manager()
+    
+    # Register this connection
+    await ws_manager.connect(websocket)
+    
+    try:
+        # Keep the connection alive and handle incoming messages
+        while True:
+            # Wait for any message from the client (ping/heartbeat)
+            # This helps detect disconnected clients
+            data = await websocket.receive_text()
+            
+            # Handle client messages if needed
+            # For now, we just keep the connection alive
+            logger.debug(f"WebSocket received: {data}")
+            
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        # Clean up the connection
+        await ws_manager.disconnect(websocket)
 
 
 # =============================================================================

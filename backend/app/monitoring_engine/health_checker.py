@@ -17,6 +17,7 @@ from app.services.monitoring_service import MonitoringService
 from app.services.anomaly_service import AnomalyService
 from app.services.ai_service import AIService
 from app.core.config import settings
+from app.core.websocket import get_websocket_manager
 
 
 # Global HTTP client for monitoring (singleton)
@@ -254,9 +255,35 @@ class HealthChecker:
         
         previous_status = {}
         
+        # Get WebSocket manager for broadcasting
+        ws_manager = get_websocket_manager()
+        
         for endpoint in endpoints:
             try:
                 log, should_trigger_ai = await self.check_endpoint(endpoint)
+                
+                # Broadcast the health check result to all connected clients
+                try:
+                    await ws_manager.broadcast_health_check_complete(
+                        endpoint_id=endpoint.id,
+                        endpoint_name=endpoint.name,
+                        status=log.status.value,
+                        latency=log.response_time,
+                        is_success=(log.status == CheckStatus.SUCCESS)
+                    )
+                    
+                    # Also broadcast endpoint update with stats
+                    await ws_manager.broadcast_endpoint_update(
+                        endpoint_id=endpoint.id,
+                        status="UP" if log.status == CheckStatus.SUCCESS else "DOWN",
+                        latency=log.response_time,
+                        uptime_percentage=endpoint.uptime_percentage or 100.0,
+                        total_checks=endpoint.total_checks,
+                        failed_checks=endpoint.failed_checks,
+                        status_code=log.status_code
+                    )
+                except Exception as ws_err:
+                    logger.warning(f"WebSocket broadcast failed: {ws_err}")
                 
                 if log.status == CheckStatus.SUCCESS:
                     results["successful"] += 1

@@ -31,6 +31,9 @@ openai==1.12.0
 # Logging
 loguru==0.7.2
 
+# WebSockets for real-time updates
+websockets>=12.0
+
 # Rate Limiting
 slowapi==0.1.9
 
