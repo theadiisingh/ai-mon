@@ -72,7 +72,66 @@ ai-mon/
 └── README.md
 ```
 
-## 🚦 Deployment Guide (Vercel)
+## 🚦 Deployment Guide
+
+### Option 1: Deploy on Render (Recommended for Beginners)
+
+#### Why Render?
+- ✅ Free tier available
+- ✅ Easy GitHub integration
+- ✅ Automatic deployments
+- ✅ Persistent disk for SQLite database
+
+#### Step-by-Step:
+
+1. **Connect Your Repository**
+   - Go to [render.com](https://render.com) and sign up
+   - Click "New" → "Web Service"
+   - Connect your GitHub repository
+
+2. **Configure the Service**
+   | Field | Value |
+   |-------|-------|
+   | Name | `ai-mon-backend` |
+   | Environment | `Python` |
+   | Region | Choose closest to you |
+   | Branch | `main` |
+   | Build Command | `pip install -r backend/requirements.txt` |
+   | Start Command | `uvicorn app.main:app --host 0.0.0.0 --port 8000` |
+
+3. **Add Environment Variables**
+   Click "Advanced" and add these:
+
+   ```
+   DEBUG=false
+   ENVIRONMENT=production
+   SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
+   DATABASE_URL=sqlite+aiosqlite:///./aimon.db
+   CORS_ORIGINS=https://your-frontend.onrender.com
+   OPENAI_API_KEY=<your-key-if-using-ai>
+   ```
+
+4. **Add Persistent Disk (Recommended)**
+   - Click "Add Persistent Disk"
+   - Name: `ai-mon-data`
+   - Size: `1 GB` (free)
+   - Mount Path: `/app/data`
+
+   If using persistent disk, change DATABASE_URL to:
+   ```
+   sqlite+aiosqlite:///./data/aimon.db
+   ```
+
+5. **Deploy!** 🚀
+   - Click "Create Web Service"
+   - Wait for build to complete (~5-10 minutes)
+   - Visit: `https://your-service.onrender.com/health/live`
+
+---
+
+### Option 2: Deploy on Vercel
+
+> Already covered in detail below
 
 ### Prerequisites
 - Node.js 18+
