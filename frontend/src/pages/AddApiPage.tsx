@@ -171,12 +171,14 @@ export default function AddApiPage() {
                     onChange={handleChange}
                     required
                     className="input bg-surface-800/50 pr-12 font-mono-nums"
-                    min="10"
+                    min="60"
+                    max="3600"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <span className="text-content-tertiary text-xs">sec</span>
                   </div>
                 </div>
+                <p className="mt-1 text-[10px] text-content-tertiary">Min: 60s, Max: 3600s (1 hour)</p>
               </div>
 
               <div>
@@ -191,12 +193,13 @@ export default function AddApiPage() {
                     required
                     className="input bg-surface-800/50 pr-12 font-mono-nums"
                     min="1"
-                    max="300"
+                    max="30"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <span className="text-content-tertiary text-xs">sec</span>
                   </div>
                 </div>
+                <p className="mt-1 text-[10px] text-content-tertiary">Max: 30 seconds</p>
               </div>
             </div>
 

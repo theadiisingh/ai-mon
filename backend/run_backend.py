@@ -7,6 +7,10 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Set development mode for easier testing
+os.environ["DEBUG"] = "true"
+os.environ["ENVIRONMENT"] = "development"
+
 # Run uvicorn
 import uvicorn
 
